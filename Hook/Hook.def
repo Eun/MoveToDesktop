@@ -1,0 +1,4 @@
+LIBRARY "Hook"
+EXPORTS
+CallWndProc
+GetMsgProc
