@@ -10,7 +10,7 @@ Adds the Move to Desktop feature to the Windows 10 System menu:
 Installation Usage
 ======
 Download and Run.  
-You might need to install the [Visual C++ Redistributable for Visual Studio. 2015](https://www.microsoft.com/download/details.aspx?id=48145)
+You might need to install the [Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/download/details.aspx?id=48145).
 
 
 Changelog
