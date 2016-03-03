@@ -10,12 +10,13 @@ Adds the Move to Desktop feature to the Windows 10 System menu:
 Installation Usage
 ======
 Download and Run.  
-You can also move windows by using <kbd>WIN<kbd>+<kbd>ALT<kbt>+<kbd>Left/Right</kbd>  
+You can also move windows by using <kbd>WIN</kbd>+<kbd>ALT</kbd>+<kbd>Left/Right</kbd>  
 You might need to install the x86 **and** x64 version of [Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/download/details.aspx?id=48145). 
 
 Settings
 ========
-You can place the [MoveToDesktop.ini](MoveToDesktop.ini) into `%AppData` and modify the settings in it.
+You can place the [MoveToDesktop.ini](MoveToDesktop.ini) into `%AppData` and modify the settings in it.  
+A restart of the application might be needed.
 
 Changelog
 =========
