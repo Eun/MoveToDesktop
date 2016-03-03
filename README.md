@@ -15,7 +15,7 @@ You might need to install the x86 **and** x64 version of [Visual C++ Redistribut
 
 Settings
 ========
-You can place the [MoveToDesktop.ini](MoveToDesktop.ini) into `%AppData` and modify the settings in it.  
+You can place the [MoveToDesktop.ini](MoveToDesktop.ini) into `%AppData%` and modify the settings in it.  
 A restart of the application might be needed.
 
 Changelog
