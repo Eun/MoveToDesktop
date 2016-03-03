@@ -1,7 +1,10 @@
 Release/
 Debug/
 x64/
+Utils/*.obj
+Utils/*.exe
 *.opensdf
 *.sdf
 *.suo
 *.dll
+*.aps

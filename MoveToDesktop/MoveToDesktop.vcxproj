@@ -86,6 +86,9 @@
       <InputResourceManifests>
       </InputResourceManifests>
     </Manifest>
+    <PreBuildEvent>
+      <Command>taskkill /f /fi "IMAGENAME eq MoveToDesktop*" /im *</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -99,6 +102,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG; _WIN64</PreprocessorDefinitions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>taskkill /f /fi "IMAGENAME eq MoveToDesktop*" /im *</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>

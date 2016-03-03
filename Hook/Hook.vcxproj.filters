@@ -25,4 +25,9 @@
   <ItemGroup>
     <None Include="Hook.def" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

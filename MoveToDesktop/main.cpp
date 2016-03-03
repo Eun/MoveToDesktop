@@ -1,7 +1,7 @@
 /**
 * MoveToDesktop
 *
-* Copyright (C) 2015 by Tobias Salzmann
+* Copyright (C) 2015-2016 by Tobias Salzmann
 * Copyright (C) 2008-2011 by Manuel Meitinger
 *
 * This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include "resource.h"
 #include "hideim.h"
 #include <VersionHelpers.h>
+#include "../Hook/hook.h"
 
 
 #ifdef _WIN64
@@ -33,6 +34,7 @@
 #define TITLE "MoveToDesktop"
 #endif
 
+bool bKeyDown = false;
 
 bool ExtractResource(const HINSTANCE hInstance, WORD resourceID, LPCTSTR szFilename)
 {
@@ -60,7 +62,6 @@ bool ExtractResource(const HINSTANCE hInstance, WORD resourceID, LPCTSTR szFilen
 	{
 		return false;
 	}
-	
 }
 
 BOOL IsWow64()
@@ -88,6 +89,45 @@ BOOL IsWow64()
 }
 
 
+LRESULT CALLBACK LowLevelKeyboardProc(int code, WPARAM wParam, LPARAM lParam)
+{
+#define msg ((PKBDLLHOOKSTRUCT)lParam)
+	if (code == HC_ACTION)
+	{
+		if (wParam == WM_SYSKEYDOWN)
+		{
+			if (msg->vkCode == VK_RIGHT)
+			{
+				if (bKeyDown == false && ((GetKeyState(VK_LMENU) && GetKeyState(VK_LWIN)) || (GetKeyState(VK_RMENU) && GetKeyState(VK_RWIN))))
+				{
+					bKeyDown = true;
+					Log("Sending to %X: MOVETOMENU_RIGHT", GetForegroundWindow());
+					PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_RIGHT, 0);
+					return 1;
+				}
+			}
+			else if (msg->vkCode == VK_LEFT)
+			{
+				if (bKeyDown == false && ((GetKeyState(VK_LMENU) && GetKeyState(VK_LWIN)) || (GetKeyState(VK_RMENU) && GetKeyState(VK_RWIN))))
+				{
+					bKeyDown = true;
+					Log("Sending to %X: MOVETOMENU_LEFT", GetForegroundWindow());
+					PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_LEFT, 0);
+					return 1;
+				}
+			}
+		}
+		else if (wParam == WM_SYSKEYUP)
+		{
+			if (msg->vkCode == VK_RIGHT || msg->vkCode == VK_LEFT)
+			{
+				bKeyDown = false;
+			}
+		}
+	}
+	return CallNextHookEx(NULL, code, wParam, lParam);
+#undef msg
+}
 
 INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, INT cmdShow)
 {
@@ -130,7 +170,6 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 		return 1;
 	}
 
-
 	// Extract 64bit version
 	#ifdef _WIN32
 	#ifndef _DEBUG
@@ -152,87 +191,103 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 	#endif
 	#endif
 
-
-
-
+	DWORD error;
 	HMODULE library;
 	// load the hook library
 	if ((library = LoadLibrary(szTempFileName)) == NULL)
 	{
-		DWORD error = GetLastError();
+		error = GetLastError();
 		char buffer[128] = "";
 		sprintf_s(buffer, sizeof(buffer), "Could not load hook!\nErrorCode: %d", error);
 		MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
 		return error;
 	}
-
-	__try
+	try
 	{
 		HOOKPROC callWndProc;
 		HHOOK callWndHook;
 
 		if ((callWndProc = (HOOKPROC)GetProcAddress(library, "CallWndProc")) == NULL)
 		{
-			DWORD error = GetLastError();
-			MessageBox(0, "Could not find CallWndProc in hook!", TITLE, MB_OK | MB_ICONERROR);
-			return error;
+			error = GetLastError();
+			throw "Could not find CallWndProc in hook!";
 		}
 		if ((callWndHook = SetWindowsHookExA(WH_CALLWNDPROC, callWndProc, library, 0)) == NULL)
 		{
-			DWORD error = GetLastError();
+			error = GetLastError();
 			char buffer[128] = "";
 			sprintf_s(buffer, sizeof(buffer), "Error on calling SetWindowsHookEx(WH_CALLWNDPROC)!\nErrorCode: %d", error);
-			MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
-			return error;
+			throw buffer;
 		}
-		__try
+		try
 		{
 			HOOKPROC getMsgProc;
 			HHOOK getMsgHook;
 
 			if ((getMsgProc = (HOOKPROC)GetProcAddress(library, "GetMsgProc")) == NULL)
 			{
-				DWORD error = GetLastError();
-				MessageBox(0, "Could not find GetMsgProc in hook.dll!", TITLE, MB_OK | MB_ICONERROR);
-				return error;
+				error = GetLastError();
+				throw "Could not find GetMsgProc in hook.dll!";
 			}
 			if ((getMsgHook = SetWindowsHookExA(WH_GETMESSAGE, getMsgProc, library, 0)) == NULL)
 			{
-				DWORD error = GetLastError();
+				error = GetLastError();
 				char buffer[128] = "";
 				sprintf_s(buffer, sizeof(buffer), "Error on calling SetWindowsHookEx(WH_GETMESSAGE)!\nErrorCode: %d", error);
-				MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
-				return error;
+				throw buffer;
 			}
-			__try
-			{
-				MSG msg;
-				BOOL ret;
 
-				// pump the messages until the end of the session
-				while ((ret = GetMessage(&msg, NULL, 0, 0)) != 0)
-				{
-					if (ret == -1)
-					{
-						return GetLastError();
-					}
-					TranslateMessage(&msg);
-					DispatchMessage(&msg);
-				}
-			}
-			__finally
+			try
 			{
-				UnhookWindowsHookEx(getMsgHook);
+				HHOOK lowLevelKeyboardHook;
+
+				if ((lowLevelKeyboardHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, library, 0)) == NULL)
+				{
+					error = GetLastError();
+					char buffer[128] = "";
+					sprintf_s(buffer, sizeof(buffer), "Error on calling SetWindowsHookEx(WH_KEYBOARD_LL)!\nErrorCode: %d", error);
+					throw buffer;
+				}
+				try
+				{
+					MSG msg;
+					BOOL ret;
+
+					// pump the messages until the end of the session
+					while ((ret = GetMessage(&msg, NULL, 0, 0)) != 0)
+					{
+						if (ret == -1)
+						{
+							return GetLastError();
+						}
+						TranslateMessage(&msg);
+						DispatchMessage(&msg);
+					}
+				}
+				catch(char *buffer)
+				{
+					MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
+				}
+				UnhookWindowsHookEx(lowLevelKeyboardHook);
 			}
+			catch (char *buffer)
+			{
+				MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
+			}
+			UnhookWindowsHookEx(getMsgHook);
 		}
-		__finally
+		catch (char *buffer)
 		{
-			UnhookWindowsHookEx(callWndHook);
+			MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
 		}
+		UnhookWindowsHookEx(callWndHook);
 	}
-	__finally {
-		FreeLibrary(library);
+	catch (char *buffer)
+	{
+		MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
 	}
+
+	FreeLibrary(library);
 
 	ReleaseMutex(mutex);
 

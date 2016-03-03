@@ -169,6 +169,9 @@
   <ItemGroup>
     <None Include="Hook.def" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hook.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
