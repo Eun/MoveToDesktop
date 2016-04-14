@@ -16,7 +16,7 @@ You might need to install the x86 **and** x64 version of [Visual C++ Redistribut
 > **Hint**  
 > It is usefull to start MoveToDesktop as Administrator.  
 > If you do so, MoveToDesktop is also enabled for privileged tasks.  
-> For starting MoveToDesktop on logon the prefered way is to create a scheduled task. [See how](help/sheduled-tasks.md). 
+> For starting MoveToDesktop on logon the prefered way is to create a scheduled task. [See how](help/scheduled-tasks.md). 
 
 Settings
 ========
