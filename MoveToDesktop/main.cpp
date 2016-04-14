@@ -229,7 +229,7 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 					INT MoveLeftKeyCode = 0;
 					INT MoveRightKeyCode = 0;
 					bGotLeftHotKey = GetHotKey(MoveLeftKey, MoveLeftKeySize, &MoveLeftKeyModifiers, &MoveLeftKeyCode);
-					bGotRightHotKey = GetHotKey(MoveLeftKey, MoveLeftKeySize, &MoveLeftKeyModifiers, &MoveLeftKeyCode);
+					bGotRightHotKey = GetHotKey(MoveRightKey, MoveRightKeySize, &MoveRightKeyModifiers, &MoveRightKeyCode);
 										
 					if (bGotLeftHotKey)
 					{
