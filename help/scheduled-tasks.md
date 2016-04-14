@@ -9,7 +9,7 @@ Click on `Create Task...`
 ![](ScheduledTask2.png)
 
 
-Make sure you check Run with highest privileges  
+Make sure you check `Run with highest privileges`  
 ![](ScheduledTask3.png)  
 
 
