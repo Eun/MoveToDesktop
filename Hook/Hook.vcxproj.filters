@@ -26,7 +26,7 @@
     <None Include="Hook.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hook.h">
+    <ClInclude Include="..\shared.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

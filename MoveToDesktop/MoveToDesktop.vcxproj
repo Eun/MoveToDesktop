@@ -148,7 +148,9 @@
     <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\shared.h" />
     <ClInclude Include="hideim.h" />
+    <ClInclude Include="KeyMapping.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

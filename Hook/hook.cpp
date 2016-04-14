@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <process.h>
 #include "VirtualDesktops.h"
-#include "hook.h"
+#include "../shared.h"
 
 IServiceProvider* pServiceProvider = nullptr;
 IVirtualDesktopManager *pDesktopManager = nullptr;
@@ -42,8 +42,6 @@ int ComStatus = COMSTATUS_UNINITIALIZED;
 bool bAddedMenu = false;
 bool bReadIni = false;
 bool bSwitchDesktopAfterMove = false;
-
-#define INIFILE "%APPDATA%\\MoveToDesktop.ini"
 
 BOOL InitCom()
 {

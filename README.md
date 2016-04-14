@@ -11,15 +11,24 @@ Installation Usage
 ======
 Download and Run.  
 You can also move windows by using <kbd>WIN</kbd>+<kbd>ALT</kbd>+<kbd>Left/Right</kbd>  
-You might need to install the x86 **and** x64 version of [Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/download/details.aspx?id=48145). 
+You might need to install the x86 **and** x64 version of [Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/download/details.aspx?id=48145).  
+
+> *Hint*  
+> It is usefull to start MoveToDesktop as Administrator.  
+> If you do so, MoveToDesktop is also enabled for privileged tasks.  
+> For starting MoveToDesktop on logon the prefered way is to create a scheduled task. [See how](help/sheduled-tasks.md). 
 
 Settings
 ========
 You can place the [MoveToDesktop.ini](MoveToDesktop.ini) into `%AppData%` and modify the settings in it.  
-A restart of the application might be needed.
+A restart of the application is required.
 
 Changelog
 =========
+1.2:
+* Configurable Hotkeys
+* Mutex bugfix
+
 1.1:
 * Hotkey
 * Keyboard accelators

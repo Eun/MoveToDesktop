@@ -18,7 +18,7 @@
 */
 #define IDR_DLL1  100
 
-#ifdef _WIN32
+#ifndef _WIN64
 #ifndef _DEBUG
 #define IDR_EXE64 101
 #endif

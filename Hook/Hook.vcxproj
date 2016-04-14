@@ -170,7 +170,7 @@
     <None Include="Hook.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="hook.h" />
+    <ClInclude Include="..\shared.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

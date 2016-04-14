@@ -20,10 +20,11 @@
 #include <Windows.h>
 #include <tchar.h>
 #include <stdio.h>
+#include <VersionHelpers.h>
 #include "resource.h"
 #include "hideim.h"
-#include <VersionHelpers.h>
-#include "../Hook/hook.h"
+#include "KeyMapping.h"
+#include "../shared.h"
 
 
 #ifdef _WIN64
@@ -89,44 +90,40 @@ BOOL IsWow64()
 }
 
 
-LRESULT CALLBACK LowLevelKeyboardProc(int code, WPARAM wParam, LPARAM lParam)
+BOOL GetHotKey(PTCHAR setting, SIZE_T size, PINT modifiers, PINT keycode)
 {
-#define msg ((PKBDLLHOOKSTRUCT)lParam)
-	if (code == HC_ACTION)
+	if (setting == NULL || size == 0)
+		return FALSE;
+	INT start = 0;
+	SIZE_T nLen;
+	*modifiers = 0;
+	for (UINT i = 0; i < size; i++)
 	{
-		if (wParam == WM_SYSKEYDOWN)
+		if (setting[i] == '+')
 		{
-			if (msg->vkCode == VK_RIGHT)
+			nLen = i - start;
+			for (INT j = 0; j < nKeyModifiersSize; j++)
 			{
-				if (bKeyDown == false && ((GetKeyState(VK_LMENU) && GetKeyState(VK_LWIN)) || (GetKeyState(VK_RMENU) && GetKeyState(VK_RWIN))))
+				if (_tcslen(keyModifiers[j].Name) == nLen && _strnicmp(&setting[start], keyModifiers[j].Name, nLen) == 0)
 				{
-					bKeyDown = true;
-					Log("Sending to %X: MOVETOMENU_RIGHT", GetForegroundWindow());
-					PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_RIGHT, 0);
-					return 1;
+					*modifiers |= keyModifiers[j].Value;
+					break;
 				}
 			}
-			else if (msg->vkCode == VK_LEFT)
-			{
-				if (bKeyDown == false && ((GetKeyState(VK_LMENU) && GetKeyState(VK_LWIN)) || (GetKeyState(VK_RMENU) && GetKeyState(VK_RWIN))))
-				{
-					bKeyDown = true;
-					Log("Sending to %X: MOVETOMENU_LEFT", GetForegroundWindow());
-					PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_LEFT, 0);
-					return 1;
-				}
-			}
-		}
-		else if (wParam == WM_SYSKEYUP)
-		{
-			if (msg->vkCode == VK_RIGHT || msg->vkCode == VK_LEFT)
-			{
-				bKeyDown = false;
-			}
+			start = i+1;
 		}
 	}
-	return CallNextHookEx(NULL, code, wParam, lParam);
-#undef msg
+	*keycode = 0;
+	nLen = size - start;
+	for (INT j = 0; j < nKeyKeysSize; j++)
+	{
+		if (_tcslen(keyKeys[j].Name) == nLen && _strnicmp(&setting[start], keyKeys[j].Name, nLen) == 0)
+		{
+			*keycode = keyKeys[j].Value;
+			break;
+		}
+	}
+	return *keycode != 0;
 }
 
 INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, INT cmdShow)
@@ -164,32 +161,9 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 
 	if (mutex != NULL && GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		#ifdef _WIN32
-			MessageBox(0, "MoveToDesktop is already running!", TITLE, MB_OK | MB_ICONERROR);
-		#endif
+		MessageBox(0, "MoveToDesktop is already running!", TITLE, MB_OK | MB_ICONERROR);
 		return 1;
 	}
-
-	// Extract 64bit version
-	#ifdef _WIN32
-	#ifndef _DEBUG
-	if (IsWow64())
-	{
-		TCHAR szTempExeFileName[MAX_PATH];
-		_tcscpy_s(szTempExeFileName, _countof(szTempExeFileName), lpTempPathBuffer);
-		_tcscat_s(szTempExeFileName, _countof(szTempExeFileName), _T("MoveToDesktop.x64.exe"));
-
-		if (ExtractResource(instance, IDR_EXE64, szTempExeFileName) == false)
-		{
-			MessageBox(0, "Extracting x64 version failed!", TITLE, MB_OK | MB_ICONERROR);
-			return 1;
-		}
-
-		ShellExecute(NULL, _T("open"), szTempExeFileName, NULL, NULL, SW_SHOWNORMAL);
-
-	}
-	#endif
-	#endif
 
 	DWORD error;
 	HMODULE library;
@@ -239,17 +213,74 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 
 			try
 			{
-				HHOOK lowLevelKeyboardHook;
+				#ifndef _WIN64
+					BOOL bGotLeftHotKey = FALSE;
+					BOOL bGotRightHotKey = FALSE;
+					Log("Reading Ini");
+					TCHAR iniFile[MAX_PATH] = { 0 };
+					ExpandEnvironmentStrings(INIFILE, iniFile, _countof(iniFile));
+					TCHAR MoveLeftKey[MAX_HOTKEY_SIZE] = { 0 };
+					TCHAR MoveRightKey[MAX_HOTKEY_SIZE] = { 0 };
+					
+					INT MoveLeftKeySize = GetPrivateProfileString("HotKeys", "MoveLeft", "WIN+ALT+LEFT", MoveLeftKey, MAX_HOTKEY_SIZE, iniFile);
+					INT MoveRightKeySize = GetPrivateProfileString("HotKeys", "MoveRight", "WIN+ALT+RIGHT", MoveRightKey, MAX_HOTKEY_SIZE, iniFile);
+					INT MoveLeftKeyModifiers = 0;
+					INT MoveRightKeyModifiers = 0;
+					INT MoveLeftKeyCode = 0;
+					INT MoveRightKeyCode = 0;
+					bGotLeftHotKey = GetHotKey(MoveLeftKey, MoveLeftKeySize, &MoveLeftKeyModifiers, &MoveLeftKeyCode);
+					bGotRightHotKey = GetHotKey(MoveLeftKey, MoveLeftKeySize, &MoveLeftKeyModifiers, &MoveLeftKeyCode);
+										
+					if (bGotLeftHotKey)
+					{
+						Log("Ini: MoveLeft Modifiers=%d, Key=%d", MoveLeftKeyModifiers, MoveLeftKeyCode);
+						if (!RegisterHotKey(NULL, MOVETOMENU_LEFT, MoveLeftKeyModifiers| MOD_NOREPEAT, MoveLeftKeyCode))
+						{
+							error = GetLastError();
+							char buffer[128] = "";
+							sprintf_s(buffer, sizeof(buffer), "Error on Registering Left-HotKey (%s)!\nErrorCode: %d", MoveLeftKey, error);
+							throw buffer;
+						}
+					}
 
-				if ((lowLevelKeyboardHook = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, library, 0)) == NULL)
-				{
-					error = GetLastError();
-					char buffer[128] = "";
-					sprintf_s(buffer, sizeof(buffer), "Error on calling SetWindowsHookEx(WH_KEYBOARD_LL)!\nErrorCode: %d", error);
-					throw buffer;
-				}
+					
+					if (bGotRightHotKey)
+					{
+						Log("Ini: MoveRight Modifiers=%d, Key=%d", MoveRightKeyModifiers, MoveRightKeyCode);
+						if (!RegisterHotKey(NULL, MOVETOMENU_RIGHT, MoveRightKeyModifiers | MOD_NOREPEAT, MoveRightKeyCode))
+						{
+							error = GetLastError();
+							char buffer[128] = "";
+							sprintf_s(buffer, sizeof(buffer), "Error on Registering Right-HotKey (%s)!\nErrorCode: %d", MoveRightKey, error);
+							throw buffer;
+						}
+					}
+				#endif
+
 				try
 				{
+
+					// Extract 64bit version
+					#ifndef _WIN64
+					#ifndef _DEBUG
+					if (IsWow64())
+					{
+						TCHAR szTempExeFileName[MAX_PATH];
+						_tcscpy_s(szTempExeFileName, _countof(szTempExeFileName), lpTempPathBuffer);
+						_tcscat_s(szTempExeFileName, _countof(szTempExeFileName), _T("MoveToDesktop.x64.exe"));
+
+						if (ExtractResource(instance, IDR_EXE64, szTempExeFileName) == false)
+						{
+							MessageBox(0, "Extracting x64 version failed!", TITLE, MB_OK | MB_ICONERROR);
+							return 1;
+						}
+
+						ShellExecute(NULL, _T("open"), szTempExeFileName, NULL, NULL, SW_SHOWNORMAL);
+
+					}
+					#endif
+					#endif
+
 					MSG msg;
 					BOOL ret;
 
@@ -260,6 +291,19 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 						{
 							return GetLastError();
 						}
+						if (msg.message == WM_HOTKEY)
+						{
+							if (msg.wParam == MOVETOMENU_LEFT)
+							{
+								Log("Sending to %X: MOVETOMENU_LEFT", GetForegroundWindow());
+								PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_LEFT, 0);
+							}
+							else if (msg.wParam == MOVETOMENU_RIGHT)
+							{
+								Log("Sending to %X: MOVETOMENU_RIGHT", GetForegroundWindow());
+								PostMessage(GetForegroundWindow(), WM_SYSCOMMAND, MOVETOMENU_RIGHT, 0);
+							}
+						}
 						TranslateMessage(&msg);
 						DispatchMessage(&msg);
 					}
@@ -268,7 +312,12 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 				{
 					MessageBox(0, buffer, TITLE, MB_OK | MB_ICONERROR);
 				}
-				UnhookWindowsHookEx(lowLevelKeyboardHook);
+				#ifndef _WIN64
+					if (bGotLeftHotKey)
+						UnregisterHotKey(NULL, MOVETOMENU_LEFT);
+					if (bGotRightHotKey)
+						UnregisterHotKey(NULL, MOVETOMENU_RIGHT);
+				#endif
 			}
 			catch (char *buffer)
 			{
