@@ -5,7 +5,7 @@ Adds the Move to Desktop feature to the Windows 10 System menu:
 
 ![](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/screenshot1.png)
 
-[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.1/MoveToDesktop-1.1.zip)
+[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.2/MoveToDesktop-1.2.zip)
 
 Installation Usage
 ======
