@@ -42,6 +42,7 @@ int ComStatus = COMSTATUS_UNINITIALIZED;
 bool bAddedMenu = false;
 bool bReadIni = false;
 bool bSwitchDesktopAfterMove = false;
+bool bCreateNewDesktopOnMove = false;
 
 BOOL InitCom()
 {
@@ -121,6 +122,8 @@ VOID ReadIni()
 	ExpandEnvironmentStrings(INIFILE, iniFile, _countof(iniFile));
 	bSwitchDesktopAfterMove = (GetPrivateProfileInt("MoveToDesktop", "SwitchDesktopAfterMove", 0, iniFile) != 0);
 	Log("Ini: SwitchDesktopAfterMove = %d", (bSwitchDesktopAfterMove ? 1 : 0));
+	bCreateNewDesktopOnMove = (GetPrivateProfileInt("MoveToDesktop", "CreateNewDesktopOnMove", 1, iniFile) != 0);
+	Log("Ini: CreateNewDesktopOnMove = %d", (bCreateNewDesktopOnMove ? 1 : 0));
 }
 
 INT GetIndexOfItem(HMENU menu, UINT id)
@@ -436,7 +439,7 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 			HandleSysCommand(index, hwnd);
 
 		}
-		else
+		else if (bCreateNewDesktopOnMove)
 		{
 			Log("Create new desktop");
 			HandleSysCommand(MOVETOMENU_NEW, hwnd);
