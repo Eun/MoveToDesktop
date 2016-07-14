@@ -17,15 +17,19 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+#define WIN32_LEAN_AND_MEAN
+
 #include <Windows.h>
 #include <tchar.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <VersionHelpers.h>
 #include "resource.h"
 #include "hideim.h"
 #include "KeyMapping.h"
 #include "../shared.h"
-
+#include <ShellAPI.h>
 
 #ifdef _WIN64
 #define MUTEX_NAME TEXT("{92B297B9-7430-4BB0-B77B-EB6D36DCF8F2}")

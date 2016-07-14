@@ -5,13 +5,13 @@ Adds the Move to Desktop feature to the Windows 10 System menu:
 
 ![](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/screenshot1.png)
 
-[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.2/MoveToDesktop-1.2.zip)
+[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.3/MoveToDesktop-1.3.zip)
 
 Installation Usage
 ======
 Download and Run.  
 You can also move windows by using <kbd>WIN</kbd>+<kbd>ALT</kbd>+<kbd>Left/Right</kbd>  
-You might need to install the x86 **and** x64 version of [Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/download/details.aspx?id=48145).  
+
 
 > **Hint**  
 > It is usefull to start MoveToDesktop as Administrator.  
@@ -25,6 +25,12 @@ A restart of the application is required.
 
 Changelog
 =========
+1.3:
+* Delete empty desktops
+* Bufix Issue #8
+* No Redistributable needed anymore #12
+* Setting for new Desktops #10
+
 1.2:
 * Configurable Hotkeys
 * Mutex bugfix

@@ -78,6 +78,7 @@
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -98,6 +99,7 @@
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -122,6 +124,7 @@
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -146,6 +149,7 @@
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
