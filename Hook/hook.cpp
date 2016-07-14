@@ -25,6 +25,7 @@
 #include <process.h>
 #include "VirtualDesktops.h"
 #include "../shared.h"
+#include <time.h>
 
 IServiceProvider* pServiceProvider = nullptr;
 IVirtualDesktopManager *pDesktopManager = nullptr;
@@ -38,11 +39,12 @@ enum EComStatus
 };
 
 int ComStatus = COMSTATUS_UNINITIALIZED;
-
+#define COMMAND_TIMEOUT 500 // Blocks Command below this timeout
 bool bAddedMenu = false;
 bool bReadIni = false;
 bool bSwitchDesktopAfterMove = false;
 bool bCreateNewDesktopOnMove = false;
+ULONGLONG nLastCommand = 0;
 
 BOOL InitCom()
 {
@@ -328,10 +330,16 @@ INT GetCurrentDesktopIndex(UINT *count)
 	return index;
 }
 
+
 void HandleSysCommand(WPARAM wParam, HWND hwnd)
 {
 	if (wParam == MOVETOMENU_NEW)
 	{
+		// abort command, too many commands in a short period of time
+		if (nLastCommand > GetTickCount64())
+		{
+			return;
+		}
 		Log("Getting RootWindow of %X", hwnd);
 		HWND rootHwnd = GetAncestor(hwnd, GA_ROOTOWNER);
 		if (rootHwnd != NULL)
@@ -365,9 +373,15 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 			}
 		}
 		pNewDesktop->Release();
+		nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;
 	}
 	else if (wParam >= MOVETOMENU_START && wParam <= MOVETOMENU_LAST)
 	{
+		// abort command, too many commands in a short period of time
+		if (nLastCommand > GetTickCount64())
+		{
+			return;
+		}
 		Log("Getting RootWindow of %X", hwnd);
 		HWND rootHwnd = GetAncestor(hwnd, GA_ROOTOWNER);
 		if (rootHwnd != NULL)
@@ -409,6 +423,7 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 			pDesktop->Release();
 		}
 		pObjectArray->Release();
+		nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;
 	}
 	else if (wParam == MOVETOMENU_LEFT)
 	{
