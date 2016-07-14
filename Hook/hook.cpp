@@ -44,6 +44,7 @@ bool bAddedMenu = false;
 bool bReadIni = false;
 bool bSwitchDesktopAfterMove = false;
 bool bCreateNewDesktopOnMove = false;
+bool bDeleteEmptyDesktops = true;
 ULONGLONG nLastCommand = 0;
 
 BOOL InitCom()
@@ -126,6 +127,8 @@ VOID ReadIni()
 	Log("Ini: SwitchDesktopAfterMove = %d", (bSwitchDesktopAfterMove ? 1 : 0));
 	bCreateNewDesktopOnMove = (GetPrivateProfileInt("MoveToDesktop", "CreateNewDesktopOnMove", 1, iniFile) != 0);
 	Log("Ini: CreateNewDesktopOnMove = %d", (bCreateNewDesktopOnMove ? 1 : 0));
+	bDeleteEmptyDesktops = (GetPrivateProfileInt("MoveToDesktop", "DeleteEmptyDesktops", 0, iniFile) != 0);
+	Log("Ini: DeleteEmptyDesktops = %d", (bDeleteEmptyDesktops ? 1 : 0));
 }
 
 INT GetIndexOfItem(HMENU menu, UINT id)
@@ -330,6 +333,62 @@ INT GetCurrentDesktopIndex(UINT *count)
 	return index;
 }
 
+// Taken from http://www.dfcd.net/projects/switcher/switcher.c
+BOOL IsAltTabWindow(HWND hwnd)
+{
+	TITLEBARINFO ti;
+	HWND hwndTry, hwndWalk = NULL;
+
+	if (!IsWindowVisible(hwnd))
+		return FALSE;
+
+	hwndTry = GetAncestor(hwnd, GA_ROOTOWNER);
+	while (hwndTry != hwndWalk)
+	{
+		hwndWalk = hwndTry;
+		hwndTry = GetLastActivePopup(hwndWalk);
+		if (IsWindowVisible(hwndTry))
+			break;
+	}
+	if (hwndWalk != hwnd)
+		return FALSE;
+
+	// the following removes some task tray programs and "Program Manager"
+	ti.cbSize = sizeof(ti);
+	GetTitleBarInfo(hwnd, &ti);
+	if (ti.rgstate[0] & STATE_SYSTEM_INVISIBLE)
+		return FALSE;
+
+	// Tool windows should not be displayed either, these do not appear in the
+	// task bar.
+	if (GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)
+		return FALSE;
+
+	// Also remove all windows without a title
+	if (GetWindowTextLength(hwnd) == 0)
+		return FALSE;
+
+
+	return TRUE;
+}
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+
+	if (IsAltTabWindow(hwnd))
+	{
+		Log("EnumWindowsProc: Checking %x", hwnd);
+		BOOL OnCurrentDesktop = FALSE;
+		pDesktopManager->IsWindowOnCurrentVirtualDesktop(hwnd, &OnCurrentDesktop);
+		if (OnCurrentDesktop)
+		{
+			CHAR buffer[1024] = "";
+			GetWindowText(hwnd, buffer, 1024);
+			Log("EnumWindowsProc: %x - %s is visible", hwnd, buffer);
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
 
 void HandleSysCommand(WPARAM wParam, HWND hwnd)
 {
@@ -410,6 +469,25 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 				hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
 				if (SUCCEEDED(hr))
 				{
+					// If there are no windows delete the desktop
+					if (bDeleteEmptyDesktops)
+					{
+						IVirtualDesktop *pCurrentDesktop = nullptr;
+						hr = pDesktopManagerInternal->GetCurrentDesktop(&pCurrentDesktop);
+						if (SUCCEEDED(hr))
+						{
+							if (pCurrentDesktop != pDesktop)
+							{
+								if (EnumWindows((WNDENUMPROC)EnumWindowsProc, NULL) != FALSE)
+								{
+									Log("Removing Desktop");
+									pDesktopManagerInternal->RemoveDesktop(pCurrentDesktop, pDesktop);
+								}
+							}
+							pCurrentDesktop->Release();
+						}
+					}
+
 					if (bSwitchDesktopAfterMove)
 					{
 						pDesktopManagerInternal->SwitchDesktop(pDesktop);
