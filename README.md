@@ -5,7 +5,7 @@ Adds the Move to Desktop feature to the Windows 10 System menu:
 
 ![](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/screenshot1.png)
 
-[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.3/MoveToDesktop-1.3.zip)
+[![Download](https://raw.githubusercontent.com/Eun/MoveToDesktop/res/download.png)](https://github.com/Eun/MoveToDesktop/releases/download/1.4/MoveToDesktop-1.4.zip)
 
 Installation Usage
 ======
@@ -25,6 +25,9 @@ A restart of the application is required.
 
 Changelog
 =========
+1.4:
+* Update for Windows 10 Anniversary (14393)
+
 1.3:
 * Delete empty desktops
 * Bufix Issue #8
