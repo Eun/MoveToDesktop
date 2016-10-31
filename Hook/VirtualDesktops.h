@@ -32,6 +32,8 @@ const CLSID CLSID_VirtualDesktopAPI_Unknown = {
 const IID IID_IVirtualDesktopManagerInternal = {
 	0xEF9F1A6C, 0xD3CC, 0x4358, 0xB7, 0x12, 0xF8, 0x4B, 0x63, 0x5B, 0xEB, 0xE7 };
 
+
+
 // ??. IApplicationView ?? Windows Runtime
 struct IApplicationView : public IUnknown
 {
@@ -64,16 +66,23 @@ enum AdjacentDesktop
 };
 
 // ???????? ??????????? ??????
-
-EXTERN_C const IID IID_IVirtualDesktopManagerInternal;
+const IID UUID_IVirtualDesktopManagerInternal_10130 {
+	0xEF9F1A6C, 0xD3CC, 0x4358, 0xB7, 0x12, 0xF8, 0x4B, 0x63, 0x5B, 0xEB, 0xE7
+};
+const IID UUID_IVirtualDesktopManagerInternal_10240 {
+	0xAF8DA486, 0x95BB, 0x4460, 0xB3, 0xB7, 0x6E, 0x7A, 0x6B, 0x29, 0x62, 0xB5
+};
+const IID UUID_IVirtualDesktopManagerInternal_14393 {
+	0xf31574d6, 0xb682, 0x4cdc, 0xbd, 0x56, 0x18, 0x27, 0x86, 0x0a, 0xbe, 0xc6
+};
 
 // 10130
 //MIDL_INTERFACE("EF9F1A6C-D3CC-4358-B712-F84B635BEBE7")
 // 10240
 //MIDL_INTERFACE("AF8DA486-95BB-4460-B3B7-6E7A6B2962B5")
 // 14393
-MIDL_INTERFACE("f31574d6-b682-4cdc-bd56-1827860abec6")
-IVirtualDesktopManagerInternal : public IUnknown
+//MIDL_INTERFACE("f31574d6-b682-4cdc-bd56-1827860abec6")
+class IVirtualDesktopManagerInternal : public IUnknown
 {
 public:
 	virtual HRESULT STDMETHODCALLTYPE GetCount(

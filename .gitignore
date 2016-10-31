@@ -8,3 +8,4 @@ Utils/*.exe
 *.suo
 *.dll
 *.aps
+*.VC.db

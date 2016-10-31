@@ -47,6 +47,26 @@ bool bCreateNewDesktopOnMove = false;
 bool bDeleteEmptyDesktops = true;
 ULONGLONG nLastCommand = 0;
 
+UINT16 GetWinBuildNumber()
+{
+	UINT16 buildNumbers[] = { 10130, 10240, 14393 };
+	OSVERSIONINFOEXW osvi = { sizeof(osvi), 0, 0, 0, 0,{ 0 }, 0, 0 };
+	ULONGLONG mask = ::VerSetConditionMask(0, VER_BUILDNUMBER, VER_EQUAL);
+
+
+
+	for (size_t i = 0; i < sizeof(buildNumbers) / sizeof(buildNumbers[0]); i++)
+	{
+		osvi.dwBuildNumber = buildNumbers[i];
+		if (VerifyVersionInfoW(&osvi, VER_BUILDNUMBER, mask) != FALSE)
+		{
+			return buildNumbers[i];
+		}
+	}
+	
+	return 0;
+}
+
 BOOL InitCom()
 {
 	Log("Initalizing Com");
@@ -88,8 +108,21 @@ BOOL InitCom()
 	}
 
 
+	UINT16 buildNumber = GetWinBuildNumber();
 
-	hr = pServiceProvider->QueryService(CLSID_VirtualDesktopAPI_Unknown, &pDesktopManagerInternal);
+	switch (buildNumber)
+	{
+		case 10130:
+			hr = pServiceProvider->QueryService(CLSID_VirtualDesktopAPI_Unknown, UUID_IVirtualDesktopManagerInternal_10130, (void**)&pDesktopManagerInternal);
+			break;
+		case 10240:
+			hr = pServiceProvider->QueryService(CLSID_VirtualDesktopAPI_Unknown, UUID_IVirtualDesktopManagerInternal_10240, (void**)&pDesktopManagerInternal);
+			break;
+		case 14393:
+		default:
+			hr = pServiceProvider->QueryService(CLSID_VirtualDesktopAPI_Unknown, UUID_IVirtualDesktopManagerInternal_14393, (void**)&pDesktopManagerInternal);
+			break;
+	}
 	if (FAILED(hr))
 	{
 		Log("> QueryService(DesktopManagerInternal) failed");

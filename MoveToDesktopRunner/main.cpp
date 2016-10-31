@@ -41,58 +41,6 @@
 
 bool bKeyDown = false;
 
-bool ExtractResource(const HINSTANCE hInstance, WORD resourceID, LPCTSTR szFilename)
-{
-	try
-	{
-		HRSRC hResource = FindResource(hInstance, MAKEINTRESOURCE(resourceID), RT_RCDATA);
-		if (hResource == NULL)
-			return false;
-		HGLOBAL hFileResource = LoadResource(hInstance, hResource);
-		if (hFileResource == NULL)
-			return false;
-
-		LPVOID lpFile = LockResource(hFileResource);
-		DWORD dwSize = SizeofResource(hInstance, hResource);
-
-		HANDLE hFile = CreateFile(szFilename, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-		DWORD dwByteWritten;
-		WriteFile(hFile, lpFile, dwSize, &dwByteWritten, NULL);
-		CloseHandle(hFile);
-		FreeResource(hFileResource);
-		return true;
-
-	}
-	catch (...)
-	{
-		return false;
-	}
-}
-
-BOOL IsWow64()
-{
-	typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
-	LPFN_ISWOW64PROCESS fnIsWow64Process;
-
-	BOOL bIsWow64 = FALSE;
-
-	//IsWow64Process is not available on all supported versions of Windows.
-	//Use GetModuleHandle to get a handle to the DLL that contains the function
-	//and GetProcAddress to get a pointer to the function if available.
-
-	fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(
-		GetModuleHandle(TEXT("kernel32")), "IsWow64Process");
-
-	if (NULL != fnIsWow64Process)
-	{
-		if (!fnIsWow64Process(GetCurrentProcess(), &bIsWow64))
-		{
-			//handle error
-		}
-	}
-	return bIsWow64;
-}
-
 
 BOOL GetHotKey(PTCHAR setting, SIZE_T size, PINT modifiers, PINT keycode)
 {
@@ -138,27 +86,17 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 		MessageBox(0, "This application is for Windows 10 only!", TITLE, MB_OK | MB_ICONERROR);
 		return 1;
 	}
-	TCHAR lpTempPathBuffer[MAX_PATH];
-	TCHAR szTempFileName[MAX_PATH];
-	DWORD dwRetVal = GetTempPath(MAX_PATH, lpTempPathBuffer);
-	if (dwRetVal > MAX_PATH || (dwRetVal == 0))
+
+	LPWSTR *szArglist;
+	int nArgs;
+
+	szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+	if (szArglist == NULL || nArgs <= 1)
 	{
-		MessageBox(0, "GetTempPath failed!", TITLE, MB_OK | MB_ICONERROR);
+		MessageBox(0, "Insufficient parameters!", TITLE, MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
-
-	if (GetTempFileName(lpTempPathBuffer, _T(""), 0, szTempFileName) == 0)
-	{
-		MessageBox(0, "GetTempFileName failed!", TITLE, MB_OK | MB_ICONERROR);
-		return 1;
-	}
-
-	if (ExtractResource(instance, IDR_DLL1, szTempFileName) == false)
-	{
-		MessageBox(0, "Extracting hook failed!", TITLE, MB_OK | MB_ICONERROR);
-		return 1;
-	}
 
 	Log("Reading Ini");
 	TCHAR iniFile[MAX_PATH] = { 0 };
@@ -184,7 +122,7 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 	DWORD error;
 	HMODULE library;
 	// load the hook library
-	if ((library = LoadLibrary(szTempFileName)) == NULL)
+	if ((library = LoadLibraryW(szArglist[1])) == NULL)
 	{
 		error = GetLastError();
 		char buffer[128] = "";
@@ -273,28 +211,6 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 
 				try
 				{
-
-					// Extract 64bit version
-					#ifndef _WIN64
-					#ifndef _DEBUG
-					if (IsWow64())
-					{
-						TCHAR szTempExeFileName[MAX_PATH];
-						_tcscpy_s(szTempExeFileName, _countof(szTempExeFileName), lpTempPathBuffer);
-						_tcscat_s(szTempExeFileName, _countof(szTempExeFileName), _T("MoveToDesktop.x64.exe"));
-
-						if (ExtractResource(instance, IDR_EXE64, szTempExeFileName) == false)
-						{
-							MessageBox(0, "Extracting x64 version failed!", TITLE, MB_OK | MB_ICONERROR);
-							return 1;
-						}
-
-						ShellExecute(NULL, _T("open"), szTempExeFileName, NULL, NULL, SW_SHOWNORMAL);
-
-					}
-					#endif
-					#endif
-
 					MSG msg;
 					BOOL ret;
 

@@ -1,0 +1,141 @@
+﻿<Window x:Class="MoveToDesktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MoveToDesktop"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+		Height="375"
+		Width="410" ResizeMode="CanMinimize"
+		>
+	<Window.Resources>
+		<DataTemplate x:Key="ComboBoxItemTemplate">
+			<TextBlock Text="{Binding Name}">
+				<TextBlock.Style>
+					<Style TargetType="TextBlock">
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding Category}" Value="">
+								<Setter Property="FontStyle" Value="Italic"/>
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</TextBlock.Style>
+			</TextBlock>
+		</DataTemplate>
+		<GroupStyle x:Key="ComboBoxGroupStyle">
+			<GroupStyle.HeaderTemplate>
+				<DataTemplate>
+					<TextBlock Text="{Binding Name}">
+						<TextBlock.Style>
+							<Style TargetType="TextBlock">
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding Name}" Value="">
+										<Setter Property="Visibility" Value="Collapsed"/>
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</TextBlock.Style>
+					</TextBlock>
+				</DataTemplate>
+			</GroupStyle.HeaderTemplate>
+		</GroupStyle>
+
+		<Style TargetType="ComboBox">
+			<Setter Property="ItemTemplate" Value="{StaticResource ComboBoxItemTemplate}"></Setter>
+		</Style>
+		
+		<Style TargetType="TextBlock">
+			<Setter Property="Foreground">
+				<Setter.Value>
+					<SolidColorBrush Color="{DynamicResource {x:Static SystemColors.GrayTextColorKey}}"/>
+				</Setter.Value>
+			</Setter>
+			<Setter Property="TextWrapping" Value="Wrap"></Setter>
+		</Style>
+	</Window.Resources>
+	<Grid Margin="10">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*"></RowDefinition>
+			<RowDefinition Height="Auto"></RowDefinition>
+			<RowDefinition Height="Auto"></RowDefinition>
+		</Grid.RowDefinitions>
+		<StackPanel Grid.Row="0">
+			<Label>Hotkey Left</Label>
+			<StackPanel Orientation="Horizontal" Margin="20,0,0,5">
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyLeft1}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyLeft2}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyLeft3}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyLeft4}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+			</StackPanel>
+			<Label>Hotkey Right</Label>
+			<StackPanel Orientation="Horizontal" Margin="20,0,0,5">
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyRight1}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyRight2}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyRight3}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+				<TextBlock Margin="5,0">+</TextBlock>
+				<ComboBox ItemsSource="{Binding Keys}" SelectedIndex="{Binding HotKeyRight4}">
+					<ComboBox.GroupStyle>
+						<StaticResource ResourceKey="ComboBoxGroupStyle"></StaticResource>
+					</ComboBox.GroupStyle>
+				</ComboBox>
+			</StackPanel>
+			<CheckBox IsChecked="{Binding SwitchDesktopAfterMove}">Switch desktop after move</CheckBox>
+			<TextBlock Margin="20,0,0,5">Switch to the desktop where the window was moved</TextBlock>
+			<CheckBox IsChecked="{Binding CreateNewDesktopOnMove}">Create new desktops on move</CheckBox>
+			<TextBlock Margin="20,0,0,5">Create a new desktop when you move the window to a non-existent desktop.</TextBlock>
+			<CheckBox IsChecked="{Binding DeleteEmptyDesktops}">Remove empty Desktops</CheckBox>
+			<TextBlock Margin="20,0,0,5">If a desktop is empty, remove it</TextBlock>
+			<CheckBox IsChecked="{Binding HideTray}">Hide in Tray</CheckBox>
+			<TextBlock Margin="20,0,0,5">Do not show the application in the tray</TextBlock>
+		</StackPanel>
+		<Border Grid.Row="1" Height="1" Margin="0,10" Background="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"></Border>
+		<Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Grid.Row="2">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"></ColumnDefinition>
+				<ColumnDefinition Width="Auto"></ColumnDefinition>
+			</Grid.ColumnDefinitions>
+			<StackPanel HorizontalAlignment="Left" Height="Auto" VerticalAlignment="Top" Grid.Column="0" Orientation="Horizontal">
+				<Button Margin="0" MinWidth="60">Install Service</Button>
+				<Button Margin="0" MinWidth="60">Remove Service</Button>
+			</StackPanel>
+			<StackPanel HorizontalAlignment="Right" Height="Auto" VerticalAlignment="Top" Grid.Column="1" Orientation="Horizontal">
+				<Button Margin="0" MinWidth="60" Content="Apply" Command="{Binding RestartRunner}"/>
+			</StackPanel>
+		</Grid>
+		
+	</Grid>
+</Window>
