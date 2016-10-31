@@ -160,8 +160,20 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 		return 1;
 	}
 
+	Log("Reading Ini");
+	TCHAR iniFile[MAX_PATH] = { 0 };
+	ExpandEnvironmentStrings(INIFILE, iniFile, _countof(iniFile));
+	TCHAR MutexName[MAX_HOTKEY_SIZE] = { 0 };
+	INT MutexNameSize;
+	
+#ifdef _WIN64
+	MutexNameSize = GetPrivateProfileString("Advanced", "Mutex_x64", MUTEX_NAME, MutexName, 40, iniFile);
+#else
+	MutexNameSize = GetPrivateProfileString("Advanced", "Mutex_x86", MUTEX_NAME, MutexName, 40, iniFile);
+#endif
+
 	// ensure that only one instance is running (but don't fail if the test fails)
-	HANDLE mutex = CreateMutex(NULL, FALSE, MUTEX_NAME);
+	HANDLE mutex = CreateMutex(NULL, FALSE, MutexName);
 
 	if (mutex != NULL && GetLastError() == ERROR_ALREADY_EXISTS)
 	{
@@ -220,9 +232,7 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 				#ifndef _WIN64
 					BOOL bGotLeftHotKey = FALSE;
 					BOOL bGotRightHotKey = FALSE;
-					Log("Reading Ini");
-					TCHAR iniFile[MAX_PATH] = { 0 };
-					ExpandEnvironmentStrings(INIFILE, iniFile, _countof(iniFile));
+					
 					TCHAR MoveLeftKey[MAX_HOTKEY_SIZE] = { 0 };
 					TCHAR MoveRightKey[MAX_HOTKEY_SIZE] = { 0 };
 					
