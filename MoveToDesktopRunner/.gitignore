@@ -1,3 +1,4 @@
 Debug/
 Release/
 x64/
+*.exe

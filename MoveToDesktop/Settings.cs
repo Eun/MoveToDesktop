@@ -88,7 +88,7 @@ namespace MoveToDesktop
 					return _moveLeft;
 				}
 				StringBuilder result = new StringBuilder(128);
-				if (GetPrivateProfileString("HotKeys", "MoveLeft", _mutex, result, 128, _configFile) != 0)
+				if (GetPrivateProfileString("HotKeys", "MoveLeft", _gui_mutex, result, 128, _configFile) != 0)
 				{
 					return result.ToString();
 				}
@@ -106,7 +106,7 @@ namespace MoveToDesktop
 					return _moveRight;
 				}
 				StringBuilder result = new StringBuilder(128);
-				if (GetPrivateProfileString("HotKeys", "MoveRight", _mutex, result, 128, _configFile) != 0)
+				if (GetPrivateProfileString("HotKeys", "MoveRight", _gui_mutex, result, 128, _configFile) != 0)
 				{
 					return result.ToString();
 				}
@@ -116,6 +116,46 @@ namespace MoveToDesktop
 		}
 		#endregion
 
+		#region Advanced Settings
+
+
+		private static readonly string _mutex_x86 = "{4EF85FA7-55CB-4BD9-AD73-15EDA3BB149C}";
+		private static readonly string _mutex_x64 = "{92B297B9-7430-4BB0-B77B-EB6D36DCF8F2}";
+
+		public static string MutexX86
+		{
+			get
+			{
+				if (!File.Exists(_configFile))
+				{
+					return _mutex_x86;
+				}
+				StringBuilder result = new StringBuilder(40);
+				if (GetPrivateProfileString("Advanced", "Mutex_x86", _mutex_x86, result, 40, _configFile) != 0)
+				{
+					return result.ToString();
+				}
+				return _mutex_x86;
+			}
+		}
+
+		public static string MutexX64
+		{
+			get
+			{
+				if (!File.Exists(_configFile))
+				{
+					return _mutex_x64;
+				}
+				StringBuilder result = new StringBuilder(40);
+				if (GetPrivateProfileString("Advanced", "Mutex_x64", _mutex_x64, result, 40, _configFile) != 0)
+				{
+					return result.ToString();
+				}
+				return _mutex_x64;
+			}
+		}
+		#endregion
 
 		#region GUI Settings
 		public static bool HideTray
@@ -132,22 +172,22 @@ namespace MoveToDesktop
 		}
 
 
-		private static readonly string _mutex = "{84d50373-c6ee-4aad-aed9-6462faa64b02}";
+		private static readonly string _gui_mutex = "{84D50373-C6EE-4AAD-AED9-6462FAA64B02}";
 
-		public static string Mutex
+		public static string GuiMutex
 		{
 			get
 			{
 				if (!File.Exists(_configFile))
 				{
-					return _mutex;
+					return _gui_mutex;
 				}
 				StringBuilder result = new StringBuilder(40);
-				if (GetPrivateProfileString("Gui", "Mutex", _mutex, result, 40, _configFile) != 0)
+				if (GetPrivateProfileString("Gui", "Mutex", _gui_mutex, result, 40, _configFile) != 0)
 				{
 					return result.ToString();
 				}
-				return _mutex;
+				return _gui_mutex;
 			}
 		}
 

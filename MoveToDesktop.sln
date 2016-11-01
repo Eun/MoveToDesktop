@@ -12,7 +12,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hook", "Hook\Hook.vcxproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoveToDesktop", "MoveToDesktop\MoveToDesktop.csproj", "{D3CB35E6-9830-4BD1-857E-9AE8ACE77A82}"
 	ProjectSection(ProjectDependencies) = postProject
-		{88D0BB04-305D-47DC-B4BD-9D3398FAFFE6} = {88D0BB04-305D-47DC-B4BD-9D3398FAFFE6}
 		{47BF4015-D8CF-4B07-B657-7E7ABDB72FDC} = {47BF4015-D8CF-4B07-B657-7E7ABDB72FDC}
 	EndProjectSection
 EndProject

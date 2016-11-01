@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Security.Principal;
+
 using System.Text;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using Microsoft.Win32.TaskScheduler;
+
 
 namespace MoveToDesktop
 {
@@ -17,6 +23,22 @@ namespace MoveToDesktop
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}
+
+
+		public MainViewModel()
+		{
+			InstallTaskCommand = new RelayCommand(o =>
+			{
+				InstallTask();
+				OnPropertyChanged(nameof(IsTaskInstalled));			
+			});
+			RemoveTaskCommand = new RelayCommand(o =>
+			{
+				RemoveTask();
+				OnPropertyChanged(nameof(IsTaskInstalled));
+			});
+		}
+
 
 		public string Title
 		{
@@ -253,11 +275,111 @@ namespace MoveToDesktop
 			set { Settings.MoveRight = BuildKey(Settings.MoveRight, value, 3); }
 		}
 
-		public ICommand RestartRunner { get; internal set; } = new RelayCommand(o =>
+		public ICommand RestartRunnerCommand { get; internal set; } = new RelayCommand(o =>
 		{
-			Runner.Exit();
-			Runner.Start();
+			RunHelper.Exit();
+			RunHelper.Start();
 		});
+
+
+		private static readonly string taskName = "MoveToDesktop";
+		private static readonly string taskDescription = "Start MoveToDesktop as Administrator for all users";
+
+		public static Task Task
+		{
+			get
+			{
+				using (TaskService ts = new TaskService())
+				{
+					return ts.FindTask(taskName, false);
+				}
+			}
+		}
+
+		public bool IsTaskInstalled
+		{
+			get { return Task != null; }
+		}
+
+		public static bool IsAdministrator
+		{
+			get
+			{
+				WindowsIdentity identity = WindowsIdentity.GetCurrent();
+				WindowsPrincipal principal = new WindowsPrincipal(identity);
+				return principal.IsInRole(WindowsBuiltInRole.Administrator);
+			}
+		}
+
+		public ICommand InstallTaskCommand { get; private set; }
+		public ICommand RemoveTaskCommand { get; private set; }
+
+		public static void InstallTask()
+		{ 
+			if (!IsAdministrator)
+			{
+				if (Process.Start(new ProcessStartInfo()
+				{
+					FileName = Assembly.GetExecutingAssembly().Location,
+					UseShellExecute = true,
+					Verb = "runas",
+					Arguments = "--install-task",
+				}) != null)
+				{
+					Application.Current.Shutdown();
+				}
+				return;
+			}
+			using (TaskService ts = new TaskService())
+			{
+				TaskDefinition td = ts.NewTask();
+				td.RegistrationInfo.Description = taskDescription;
+
+				td.Triggers.Add(new LogonTrigger());
+
+				// Create an action that will launch Notepad whenever the trigger fires
+				td.Actions.Add(new ExecAction(Assembly.GetExecutingAssembly().Location));
+
+				//td.Settings.RunOnlyIfLoggedOn = true;
+				td.Principal.RunLevel = TaskRunLevel.Highest;
+
+				// Register the task in the root folder
+				ts.RootFolder.RegisterTaskDefinition(taskName, td);
+
+				// Force the view
+				Settings.FirstTime = true;
+				Task.Run();
+				Application.Current.Shutdown();
+			}
+		}
+
+		public static void RemoveTask() { 
+			if (!IsAdministrator)
+			{
+				if (Process.Start(new ProcessStartInfo()
+				{
+					FileName = Assembly.GetExecutingAssembly().Location,
+					UseShellExecute = true,
+					Verb = "runas",
+					Arguments = "--remove-task",
+				}) != null)
+				{
+					Application.Current.Shutdown();
+				}
+				return;
+			}
+			using (TaskService ts = new TaskService())
+			{
+				try
+				{
+					ts.RootFolder.DeleteTask(taskName);
+				}
+				catch
+				{
+					
+				}
+			}
+		}
 
 	}
 }

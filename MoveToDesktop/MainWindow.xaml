@@ -45,12 +45,13 @@
 			<Setter Property="ItemTemplate" Value="{StaticResource ComboBoxItemTemplate}"></Setter>
 		</Style>
 		
-		<Style TargetType="TextBlock">
+		<Style TargetType="TextBlock" x:Key="Description">
 			<Setter Property="Foreground">
 				<Setter.Value>
 					<SolidColorBrush Color="{DynamicResource {x:Static SystemColors.GrayTextColorKey}}"/>
 				</Setter.Value>
 			</Setter>
+			<Setter Property="Margin" Value="20,0,0,5"></Setter>
 			<Setter Property="TextWrapping" Value="Wrap"></Setter>
 		</Style>
 	</Window.Resources>
@@ -114,13 +115,13 @@
 				</ComboBox>
 			</StackPanel>
 			<CheckBox IsChecked="{Binding SwitchDesktopAfterMove}">Switch desktop after move</CheckBox>
-			<TextBlock Margin="20,0,0,5">Switch to the desktop where the window was moved</TextBlock>
+			<TextBlock Style="{StaticResource Description}">Switch to the desktop where the window was moved</TextBlock>
 			<CheckBox IsChecked="{Binding CreateNewDesktopOnMove}">Create new desktops on move</CheckBox>
-			<TextBlock Margin="20,0,0,5">Create a new desktop when you move the window to a non-existent desktop.</TextBlock>
+			<TextBlock Style="{StaticResource Description}">Create a new desktop when you move the window to a non-existent desktop.</TextBlock>
 			<CheckBox IsChecked="{Binding DeleteEmptyDesktops}">Remove empty Desktops</CheckBox>
-			<TextBlock Margin="20,0,0,5">If a desktop is empty, remove it</TextBlock>
+			<TextBlock Style="{StaticResource Description}">If a desktop is empty, remove it</TextBlock>
 			<CheckBox IsChecked="{Binding HideTray}">Hide in Tray</CheckBox>
-			<TextBlock Margin="20,0,0,5">Do not show the application in the tray</TextBlock>
+			<TextBlock Style="{StaticResource Description}">Do not show the application in the tray</TextBlock>
 		</StackPanel>
 		<Border Grid.Row="1" Height="1" Margin="0,10" Background="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"></Border>
 		<Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Grid.Row="2">
@@ -129,11 +130,71 @@
 				<ColumnDefinition Width="Auto"></ColumnDefinition>
 			</Grid.ColumnDefinitions>
 			<StackPanel HorizontalAlignment="Left" Height="Auto" VerticalAlignment="Top" Grid.Column="0" Orientation="Horizontal">
-				<Button Margin="0" MinWidth="60">Install Service</Button>
-				<Button Margin="0" MinWidth="60">Remove Service</Button>
+				<Button Margin="0" MinWidth="60" Command="{Binding InstallTaskCommand}">
+					<Button.Style>
+						<Style TargetType="Button">
+							<Style.Triggers>
+								<DataTrigger Binding="{Binding IsTaskInstalled}" Value="false">
+									<Setter Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+								<DataTrigger Binding="{Binding IsTaskInstalled}" Value="true">
+									<Setter Property="Visibility" Value="Collapsed"/>
+								</DataTrigger>
+							</Style.Triggers>
+						</Style>
+					</Button.Style>
+					<StackPanel Orientation="Horizontal">
+						<Image Source="Resources/shield.ico" Stretch="Uniform" Width="16" VerticalAlignment="Center" Margin="0,0,5,0">
+							<Image.Style>
+								<Style TargetType="Image">
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding IsAdministrator}" Value="true">
+											<Setter Property="Visibility" Value="Collapsed"/>
+										</DataTrigger>
+										<DataTrigger Binding="{Binding IsAdministrator}" Value="false">
+											<Setter Property="Visibility" Value="Visible"/>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Image.Style>
+						</Image>
+						<TextBlock VerticalAlignment="Center">Install Scheduled Task</TextBlock>
+					</StackPanel>
+				</Button>
+				<Button Margin="0" MinWidth="60" Command="{Binding RemoveTaskCommand}">
+					<Button.Style>
+						<Style TargetType="Button">
+							<Style.Triggers>
+								<DataTrigger Binding="{Binding IsTaskInstalled}" Value="true">
+									<Setter Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+								<DataTrigger Binding="{Binding IsTaskInstalled}" Value="false">
+									<Setter Property="Visibility" Value="Collapsed"/>
+								</DataTrigger>
+							</Style.Triggers>
+						</Style>
+					</Button.Style>
+					<StackPanel Orientation="Horizontal">
+						<Image Source="Resources/shield.ico" Stretch="Uniform" Width="16" VerticalAlignment="Center" Margin="0,0,5,0">
+							<Image.Style>
+								<Style TargetType="Image">
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding IsAdministrator}" Value="true">
+											<Setter Property="Visibility" Value="Collapsed"/>
+										</DataTrigger>
+										<DataTrigger Binding="{Binding IsAdministrator}" Value="false">
+											<Setter Property="Visibility" Value="Visible"/>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Image.Style>
+						</Image>
+						<TextBlock VerticalAlignment="Center">Remove Scheduled Task</TextBlock>
+					</StackPanel>
+				</Button>
 			</StackPanel>
 			<StackPanel HorizontalAlignment="Right" Height="Auto" VerticalAlignment="Top" Grid.Column="1" Orientation="Horizontal">
-				<Button Margin="0" MinWidth="60" Content="Apply" Command="{Binding RestartRunner}"/>
+				<Button Margin="0" MinWidth="60" Content="Apply" Command="{Binding RestartRunnerCommand}"/>
 			</StackPanel>
 		</Grid>
 		

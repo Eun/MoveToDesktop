@@ -92,6 +92,9 @@
       <InputResourceManifests>
       </InputResourceManifests>
     </Manifest>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)MoveToDesktopRunner.x86.exe"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -106,6 +109,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG; _WIN64</PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)MoveToDesktopRunner.x64.exe"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -125,6 +131,9 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)MoveToDesktopRunner.x86.exe"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -143,6 +152,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)MoveToDesktopRunner.x64.exe"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

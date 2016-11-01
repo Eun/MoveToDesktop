@@ -17,9 +17,3 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #define IDR_DLL1  100
-
-#ifndef _WIN64
-#ifndef _DEBUG
-#define IDR_EXE64 101
-#endif
-#endif

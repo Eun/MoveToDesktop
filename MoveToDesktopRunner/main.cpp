@@ -41,6 +41,33 @@
 
 bool bKeyDown = false;
 
+bool ExtractResource(const HINSTANCE hInstance, WORD resourceID, LPCTSTR szFilename)
+{
+	try
+	{
+		HRSRC hResource = FindResource(hInstance, MAKEINTRESOURCE(resourceID), RT_RCDATA);
+		if (hResource == NULL)
+			return false;
+		HGLOBAL hFileResource = LoadResource(hInstance, hResource);
+		if (hFileResource == NULL)
+			return false;
+
+		LPVOID lpFile = LockResource(hFileResource);
+		DWORD dwSize = SizeofResource(hInstance, hResource);
+
+		HANDLE hFile = CreateFile(szFilename, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		DWORD dwByteWritten;
+		WriteFile(hFile, lpFile, dwSize, &dwByteWritten, NULL);
+		CloseHandle(hFile);
+		FreeResource(hFileResource);
+		return true;
+
+	}
+	catch (...)
+	{
+		return false;
+	}
+}
 
 BOOL GetHotKey(PTCHAR setting, SIZE_T size, PINT modifiers, PINT keycode)
 {
@@ -87,16 +114,27 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 		return 1;
 	}
 
-	LPWSTR *szArglist;
-	int nArgs;
-
-	szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
-	if (szArglist == NULL || nArgs <= 1)
+	TCHAR lpTempPathBuffer[MAX_PATH];
+	TCHAR szTempFileName[MAX_PATH];
+	DWORD dwRetVal = GetTempPath(MAX_PATH, lpTempPathBuffer);
+	if (dwRetVal > MAX_PATH || (dwRetVal == 0))
 	{
-		MessageBox(0, "Insufficient parameters!", TITLE, MB_OK | MB_ICONERROR);
+		MessageBox(0, "GetTempPath failed!", TITLE, MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
+
+	if (GetTempFileName(lpTempPathBuffer, _T(""), 0, szTempFileName) == 0)
+	{
+		MessageBox(0, "GetTempFileName failed!", TITLE, MB_OK | MB_ICONERROR);
+		return 1;
+	}
+
+	if (ExtractResource(instance, IDR_DLL1, szTempFileName) == false)
+	{
+		MessageBox(0, "Extracting hook failed!", TITLE, MB_OK | MB_ICONERROR);
+		return 1;
+	}
 
 	Log("Reading Ini");
 	TCHAR iniFile[MAX_PATH] = { 0 };
@@ -109,9 +147,13 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 #else
 	MutexNameSize = GetPrivateProfileString("Advanced", "Mutex_x86", MUTEX_NAME, MutexName, 40, iniFile);
 #endif
-
+	SECURITY_ATTRIBUTES sa = { sizeof(sa) };
+	SECURITY_DESCRIPTOR SD;
+	InitializeSecurityDescriptor(&SD, SECURITY_DESCRIPTOR_REVISION);
+	SetSecurityDescriptorDacl(&SD, TRUE, NULL, FALSE);
+	sa.lpSecurityDescriptor = &SD;
 	// ensure that only one instance is running (but don't fail if the test fails)
-	HANDLE mutex = CreateMutex(NULL, FALSE, MutexName);
+	HANDLE mutex = CreateMutex(&sa, FALSE, MutexName);
 
 	if (mutex != NULL && GetLastError() == ERROR_ALREADY_EXISTS)
 	{
@@ -122,7 +164,7 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 	DWORD error;
 	HMODULE library;
 	// load the hook library
-	if ((library = LoadLibraryW(szArglist[1])) == NULL)
+	if ((library = LoadLibrary(szTempFileName)) == NULL)
 	{
 		error = GetLastError();
 		char buffer[128] = "";

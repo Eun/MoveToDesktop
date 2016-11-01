@@ -39,6 +39,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Manifest Include="MoveToDesktop.exe.manifest" />
+    <Manifest Include="MoveToDesktopRunner.exe.manifest" />
   </ItemGroup>
 </Project>

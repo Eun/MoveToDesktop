@@ -450,6 +450,16 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 		hr = pNewDesktop->GetID(&id);
 		if (SUCCEEDED(hr))
 		{
+			HWND focusHwnd = NULL;
+			if (!bSwitchDesktopAfterMove)
+			{
+				focusHwnd = hwnd;
+				do
+				{
+					focusHwnd = GetNextWindow(focusHwnd, GW_HWNDNEXT);
+				} while (focusHwnd && EnumWindowsProc(focusHwnd, NULL));
+			}
+
 			Log("pDesktopManager->MoveWindowToDesktop(%X, %X)", hwnd, id);
 			hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
 			if (SUCCEEDED(hr))
@@ -457,6 +467,10 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 				if (bSwitchDesktopAfterMove)
 				{
 					pDesktopManagerInternal->SwitchDesktop(pNewDesktop);
+				}
+				else if (focusHwnd)
+				{
+					SetForegroundWindow(focusHwnd);
 				}
 			}
 			else
@@ -498,6 +512,16 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 
 			if (SUCCEEDED(hr))
 			{
+				HWND focusHwnd = NULL;
+				if (!bSwitchDesktopAfterMove)
+				{
+					focusHwnd = hwnd;
+					do
+					{
+						focusHwnd = GetNextWindow(focusHwnd, GW_HWNDNEXT);
+					} while (focusHwnd && EnumWindowsProc(focusHwnd, NULL));
+				}
+
 				Log("pDesktopManager->MoveWindowToDesktop(%X, %X)", hwnd, id);
 				hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
 				if (SUCCEEDED(hr))
@@ -524,6 +548,10 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 					if (bSwitchDesktopAfterMove)
 					{
 						pDesktopManagerInternal->SwitchDesktop(pDesktop);
+					}
+					else if (focusHwnd != NULL)
+					{
+						SetForegroundWindow(focusHwnd);
 					}
 				}
 				else
