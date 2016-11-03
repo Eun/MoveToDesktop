@@ -27,9 +27,13 @@
 #include "../shared.h"
 #include <time.h>
 
+
+
 IServiceProvider* pServiceProvider = nullptr;
 IVirtualDesktopManager *pDesktopManager = nullptr;
 IVirtualDesktopManagerInternal* pDesktopManagerInternal = nullptr;
+
+#define EXPORT __declspec(dllexport)
 
 enum EComStatus
 {
@@ -141,6 +145,7 @@ VOID FreeCom()
 {
 	if (ComStatus == COMSTATUS_INITIALIZED)
 	{
+		Log("Releasing Com");
 		pDesktopManager->Release();
 		pDesktopManagerInternal->Release();
 		pServiceProvider->Release();
@@ -307,64 +312,6 @@ VOID RemoveMenu(HWND hwnd, HMENU menu)
 	DeleteMenu(systemMenu, MoveToItem.wID, MF_BYCOMMAND);	
 }
 
-INT GetCurrentDesktopIndex(UINT *count)
-{
-	*count = 0;
-	IObjectArray *pObjectArray = nullptr;
-	IVirtualDesktop *pCurrentDesktop = nullptr;
-
-	if (!InitCom())
-	{
-		Log("InitCom failed");
-		return -1;
-	}
-
-	HRESULT hr = pDesktopManagerInternal->GetDesktops(&pObjectArray);
-	if (FAILED(hr))
-	{
-		Log("pDesktopManagerInternal->GetDesktops failed %x", hr);
-		return -1;
-	}
-
-	hr = pObjectArray->GetCount(count);
-	if (FAILED(hr))
-	{
-		Log("pObjectArray->GetCount failed %x", hr);
-		pObjectArray->Release();
-		return -1;
-	}
-
-
-	hr = pDesktopManagerInternal->GetCurrentDesktop(&pCurrentDesktop);
-	if (FAILED(hr))
-	{
-		Log("pDesktopManagerInternal->GetCurrentDesktop failed %x", hr);
-		pObjectArray->Release();
-		return -1;
-	}
-
-	int index = -1;
-	for (UINT i = 0; i < *count && i < MAXDESKTOPS && index == -1; ++i)
-	{
-		IVirtualDesktop *pDesktop = nullptr;
-
-		if (FAILED(pObjectArray->GetAt(i, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
-			continue;
-		if (pDesktop == pCurrentDesktop)
-		{
-			index = MOVETOMENU_START + i;
-		}
-		pDesktop->Release();
-	}
-
-	pObjectArray->Release();
-
-	if (pCurrentDesktop != nullptr)
-	{
-		pCurrentDesktop->Release();
-	}
-	return index;
-}
 
 // Taken from http://www.dfcd.net/projects/switcher/switcher.c
 BOOL IsAltTabWindow(HWND hwnd)
@@ -407,196 +354,432 @@ BOOL IsAltTabWindow(HWND hwnd)
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 
+	Log("EnumWindowsProc: Checking %x", hwnd);
 	if (IsAltTabWindow(hwnd))
 	{
-		Log("EnumWindowsProc: Checking %x", hwnd);
-		BOOL OnCurrentDesktop = FALSE;
-		pDesktopManager->IsWindowOnCurrentVirtualDesktop(hwnd, &OnCurrentDesktop);
-		if (OnCurrentDesktop)
+		GUID desktopId;
+		if (SUCCEEDED(pDesktopManager->GetWindowDesktopId(hwnd, &desktopId)))
 		{
-			CHAR buffer[1024] = "";
-			GetWindowText(hwnd, buffer, 1024);
-			Log("EnumWindowsProc: %x - %s is visible", hwnd, buffer);
-			return FALSE;
+			if (desktopId == *(GUID*)lParam)
+			{
+				CHAR buffer[1024] = "";
+				GetWindowText(hwnd, buffer, 1024);
+				Log("EnumWindowsProc: %x - %s is visible", hwnd, buffer);
+				// stop enumeration
+				return FALSE;
+			}
 		}
+	}
+	// window does not belong to us or is not a "valid window"
+	// continue with the next window
+	return TRUE;
+}
+
+BOOL GetDesktop(IVirtualDesktop** pDesktop, UINT index)
+{
+	BOOL status = FALSE;
+	IObjectArray *pObjectArray;
+	if (SUCCEEDED(pDesktopManagerInternal->GetDesktops(&pObjectArray)))
+	{
+		UINT count;
+		if (SUCCEEDED(pObjectArray->GetCount(&count)) && count >= index + 1)
+		{
+			status = SUCCEEDED(pObjectArray->GetAt(index, __uuidof(IVirtualDesktop), (void**)pDesktop));
+		}
+		pObjectArray->Release();
+	}
+	return status;
+}
+
+
+EXPORT BOOL GetCurrentDesktopIndex(PUINT index, PUINT count)
+{
+	IObjectArray *pObjectArray;
+	IVirtualDesktop *pCurrentDesktop;
+
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+
+	HRESULT hr = pDesktopManagerInternal->GetDesktops(&pObjectArray);
+	if (FAILED(hr))
+	{
+		Log("pDesktopManagerInternal->GetDesktops failed %x", hr);
+		return FALSE;
+	}
+
+	hr = pObjectArray->GetCount(count);
+	if (FAILED(hr))
+	{
+		Log("pObjectArray->GetCount failed %x", hr);
+		pObjectArray->Release();
+		return FALSE;
+	}
+
+
+	hr = pDesktopManagerInternal->GetCurrentDesktop(&pCurrentDesktop);
+	if (FAILED(hr))
+	{
+		Log("pDesktopManagerInternal->GetCurrentDesktop failed %x", hr);
+		pObjectArray->Release();
+		return FALSE;
+	}
+
+	*index = -1;
+	for (UINT i = 0; i < *count && i < MAXDESKTOPS && *index == -1; ++i)
+	{
+		IVirtualDesktop *pDesktop = nullptr;
+
+		if (FAILED(pObjectArray->GetAt(i, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
+			continue;
+		if (pDesktop == pCurrentDesktop)
+		{
+			*index = i;
+		}
+		pDesktop->Release();
+	}
+
+	pObjectArray->Release();
+
+	if (pCurrentDesktop != nullptr)
+	{
+		pCurrentDesktop->Release();
 	}
 	return TRUE;
 }
 
-void HandleSysCommand(WPARAM wParam, HWND hwnd)
+EXPORT BOOL SwitchDesktop(UINT index)
 {
-	if (wParam == MOVETOMENU_NEW)
+	if (!InitCom())
 	{
-		// abort command, too many commands in a short period of time
-		if (nLastCommand > GetTickCount64())
-		{
-			return;
-		}
-		Log("Getting RootWindow of %X", hwnd);
-		HWND rootHwnd = GetAncestor(hwnd, GA_ROOTOWNER);
-		if (rootHwnd != NULL)
-		{
-			hwnd = rootHwnd;
-		}
-
-		Log("Moving %X to new", hwnd);
-		IVirtualDesktop *pNewDesktop = nullptr;
-		HRESULT hr = pDesktopManagerInternal->CreateDesktopW(&pNewDesktop);
-		if (FAILED(hr))
-		{
-			return;
-		}
-		GUID id;
-		hr = pNewDesktop->GetID(&id);
-		if (SUCCEEDED(hr))
-		{
-			HWND focusHwnd = NULL;
-			if (!bSwitchDesktopAfterMove)
-			{
-				focusHwnd = hwnd;
-				do
-				{
-					focusHwnd = GetNextWindow(focusHwnd, GW_HWNDNEXT);
-				} while (focusHwnd && EnumWindowsProc(focusHwnd, NULL));
-			}
-
-			Log("pDesktopManager->MoveWindowToDesktop(%X, %X)", hwnd, id);
-			hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
-			if (SUCCEEDED(hr))
-			{
-				if (bSwitchDesktopAfterMove)
-				{
-					pDesktopManagerInternal->SwitchDesktop(pNewDesktop);
-				}
-				else if (focusHwnd)
-				{
-					SetForegroundWindow(focusHwnd);
-				}
-			}
-			else
-			{
-				Log("Error %d on moving %X to %X", hr, hwnd, id);
-			}
-		}
-		pNewDesktop->Release();
-		nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;
+		Log("InitCom failed");
+		return FALSE;
 	}
-	else if (wParam >= MOVETOMENU_START && wParam <= MOVETOMENU_LAST)
+	BOOL status = FALSE;
+	IVirtualDesktop *pDesktop;
+	if (GetDesktop(&pDesktop, index))
 	{
-		// abort command, too many commands in a short period of time
-		if (nLastCommand > GetTickCount64())
-		{
-			return;
-		}
-		Log("Getting RootWindow of %X", hwnd);
-		HWND rootHwnd = GetAncestor(hwnd, GA_ROOTOWNER);
-		if (rootHwnd != NULL)
-		{
-			hwnd = rootHwnd;
-		}
+		HRESULT hr = pDesktopManagerInternal->SwitchDesktop(pDesktop);
+		Log("pDesktopManagerInternal->SwitchDesktop(%X) => %X", pDesktop, hr);
+		status = SUCCEEDED(hr);
+		pDesktop->Release();
+	}
+	return status;
+}
 
-		Log("Moving %X to %X", hwnd, wParam);
-		IObjectArray *pObjectArray = nullptr;
-		HRESULT hr = pDesktopManagerInternal->GetDesktops(&pObjectArray);
-		if (FAILED(hr))
-		{
-			Log("Failed to get desktops for %X", hwnd);
-			return;
-		}
 
-		IVirtualDesktop *pDesktop = nullptr;
-		if (SUCCEEDED(pObjectArray->GetAt((UINT)wParam - MOVETOMENU_START, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
-		{
-			GUID id;
-			hr = pDesktop->GetID(&id);
+HWND GetRoot(HWND hwnd)
+{
+	Log("Getting RootWindow of %X", hwnd);
+	HWND rootHwnd = GetAncestor(hwnd, GA_ROOTOWNER);
+	if (rootHwnd != NULL)
+	{
+		Log("Root of %X is %X", hwnd, rootHwnd);
+		hwnd = rootHwnd;
+	}
+	return hwnd;
+}
 
-			if (SUCCEEDED(hr))
+BOOL MoveWindowToDesktop(HWND hwnd, IVirtualDesktop* pDesktop)
+{
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+	BOOL status = FALSE;
+	GUID id;
+	if (SUCCEEDED(pDesktop->GetID(&id)))
+	{
+		HRESULT hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
+		Log("pDesktopManager->MoveWindowToDesktop(%X, %X) => %X", hwnd, id, hr);
+		status = SUCCEEDED(hr);
+	}
+	return status;
+}
+
+EXPORT BOOL MoveWindowToDesktop(HWND hwnd, UINT index)
+{
+	hwnd = GetRoot(hwnd);
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+	BOOL status = FALSE;
+	IVirtualDesktop *pDesktop;
+	if (GetDesktop(&pDesktop, index))
+	{
+		status = MoveWindowToDesktop(hwnd, pDesktop);
+		pDesktop->Release();
+	}
+	return status;
+}
+
+#undef CreateDesktop
+BOOL CreateDesktop(IVirtualDesktop **pCreatedDesktop)
+{
+	return SUCCEEDED(pDesktopManagerInternal->CreateDesktopW(pCreatedDesktop));
+}
+
+EXPORT BOOL CreateDesktop(PUINT index)
+{
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+	BOOL status = FALSE;
+	IVirtualDesktop *pCreatedDesktop;
+	if (CreateDesktop(&pCreatedDesktop))
+	{
+		GUID createdId;
+		if (SUCCEEDED(pCreatedDesktop->GetID(&createdId)))
+		{
+			IObjectArray *pObjectArray;
+			if (SUCCEEDED(pDesktopManagerInternal->GetDesktops(&pObjectArray)))
 			{
-				HWND focusHwnd = NULL;
-				if (!bSwitchDesktopAfterMove)
+				UINT count;
+				if (SUCCEEDED(pObjectArray->GetCount(&count)) && count > 0)
 				{
-					focusHwnd = hwnd;
-					do
+					for (UINT i = 0; i < count && status == FALSE; i++)
 					{
-						focusHwnd = GetNextWindow(focusHwnd, GW_HWNDNEXT);
-					} while (focusHwnd && EnumWindowsProc(focusHwnd, NULL));
-				}
-
-				Log("pDesktopManager->MoveWindowToDesktop(%X, %X)", hwnd, id);
-				hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
-				if (SUCCEEDED(hr))
-				{
-					// If there are no windows delete the desktop
-					if (bDeleteEmptyDesktops)
-					{
-						IVirtualDesktop *pCurrentDesktop = nullptr;
-						hr = pDesktopManagerInternal->GetCurrentDesktop(&pCurrentDesktop);
-						if (SUCCEEDED(hr))
+						IVirtualDesktop *pDesktop;
+						if (SUCCEEDED(pObjectArray->GetAt(i, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
 						{
-							if (pCurrentDesktop != pDesktop)
+							if (pCreatedDesktop == pDesktop)
 							{
-								if (EnumWindows((WNDENUMPROC)EnumWindowsProc, NULL) != FALSE)
-								{
-									Log("Removing Desktop");
-									pDesktopManagerInternal->RemoveDesktop(pCurrentDesktop, pDesktop);
-								}
+								*index = i;
+								status = TRUE;
 							}
-							pCurrentDesktop->Release();
+							pDesktop->Release();
 						}
 					}
 
-					if (bSwitchDesktopAfterMove)
-					{
-						pDesktopManagerInternal->SwitchDesktop(pDesktop);
-					}
-					else if (focusHwnd != NULL)
-					{
-						SetForegroundWindow(focusHwnd);
-					}
 				}
-				else
+				pObjectArray->Release();
+			}
+		}
+		pCreatedDesktop->Release();
+	}
+	return status;
+}
+EXPORT BOOL RemoveDesktop(UINT index, UINT fallbackIndex)
+{
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+	BOOL status = FALSE;
+	IVirtualDesktop *pDesktop;
+	if (!GetDesktop(&pDesktop, index))
+	{
+		return status;
+	}
+
+	IVirtualDesktop *pFallbackDesktop;
+	if (!GetDesktop(&pFallbackDesktop, fallbackIndex))
+	{
+		pDesktop->Release();
+		return status;
+	}
+
+
+	if (SUCCEEDED(pDesktopManagerInternal->RemoveDesktop(pDesktop, pFallbackDesktop)))
+	{
+		status = TRUE;
+	}
+
+	pDesktop->Release();
+	pFallbackDesktop->Release();
+	return status;
+}
+
+BOOL HasDesktopWindows(IVirtualDesktop* pDesktop)
+{
+	GUID id;
+	if (SUCCEEDED(pDesktop->GetID(&id)))
+	{
+		return ((EnumWindows((WNDENUMPROC)EnumWindowsProc, (LPARAM)&id)) == FALSE);
+	}
+	else
+	{
+		// better be safe than sorry
+		return TRUE;
+	}
+}
+
+EXPORT BOOL HasDesktopWindows(UINT index)
+{
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return TRUE;
+	}
+	BOOL status = TRUE; // better be safe than sorry
+	IVirtualDesktop *pDesktop;
+	if (!GetDesktop(&pDesktop, index))
+	{
+		return status;
+	}
+	status = HasDesktopWindows(pDesktop);
+	pDesktop->Release();
+	return status;
+}
+
+
+
+
+BOOL GetCurrentDesktop(IVirtualDesktop** pDesktop)
+{
+	return SUCCEEDED(pDesktopManagerInternal->GetCurrentDesktop(pDesktop));
+}
+
+BOOL MoveWindowToDesktop(HWND hwnd, UINT index, bool switchTo)
+{
+	hwnd = GetRoot(hwnd);
+	BOOL status = FALSE;
+	HWND focusHwnd = NULL;
+	if (!switchTo)
+	{
+		focusHwnd = hwnd;
+		do
+		{
+			focusHwnd = GetNextWindow(focusHwnd, GW_HWNDNEXT);
+		} while (focusHwnd && !IsAltTabWindow(focusHwnd));
+	}
+
+	IVirtualDesktop *pDesktop;
+
+	if (index == -1)
+	{
+		Log("Moving %X to new", hwnd);
+		// create new
+		if (!CreateDesktop(&pDesktop))
+		{
+			return status;
+		}
+	}
+	else
+	{
+		Log("Moving %X to %X", hwnd, index);
+		// move to existant
+		if (!GetDesktop(&pDesktop, index))
+		{
+			return status;
+		}
+	}
+
+	if (MoveWindowToDesktop(hwnd, pDesktop))
+	{
+		// If there are no windows delete the desktop
+		/*if (bDeleteEmptyDesktops)
+		{
+			if (!HasDesktopWindows(pDesktop))
+			{
+				IVirtualDesktop *pCurrentDekstop;
+				if (GetCurrentDesktop(&pCurrentDekstop))
 				{
-					Log("Error %X on moving %X to %X", hr, hwnd, id);
+					pDesktopManagerInternal->RemoveDesktop(pDesktop, pCurrentDekstop);
+					pCurrentDekstop->Release;
 				}
 			}
-			pDesktop->Release();
-		}
-		pObjectArray->Release();
-		nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;
-	}
-	else if (wParam == MOVETOMENU_LEFT)
-	{
-		UINT count;
-		int index = GetCurrentDesktopIndex(&count);
-		Log("Current Index is %d", index);
-		Log("Current Count is %d", count);
-		if (index == -1)
-			return;
-		if (index == MOVETOMENU_START)
-			return;
-		Log("Switch to %d", index - 1);
-		HandleSysCommand(--index, hwnd);
-	}
-	else if (wParam == MOVETOMENU_RIGHT)
-	{
-		UINT count;
-		int index = GetCurrentDesktopIndex(&count);
-		Log("Current Index is %d", index);
-		Log("Current Count is %d", count);
-		if (index == -1)
-			return;
-		if (index == MOVETOMENU_LAST)
-			return;
-		if ((++index) <= (int)(count + MOVETOMENU_NEW))
-		{
-			Log("Switch to %d", index);
-			HandleSysCommand(index, hwnd);
+		}*/
 
-		}
-		else if (bCreateNewDesktopOnMove)
+		if (switchTo)
 		{
-			Log("Create new desktop");
-			HandleSysCommand(MOVETOMENU_NEW, hwnd);
+			pDesktopManagerInternal->SwitchDesktop(pDesktop);
+		}
+		else if (focusHwnd != NULL)
+		{
+			SetForegroundWindow(focusHwnd);
+		}
+		status = true;
+	}
+	pDesktop->Release();
+	return status;
+}
+
+BOOL ShouldExecuteCommand()
+{
+	// abort command, too many commands in a short period of time
+	if (nLastCommand > GetTickCount64())
+	{
+		Log("ShouldExecuteCommand => No");
+		return FALSE;
+	}
+	nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;
+	Log("ShouldExecuteCommand => Yes");
+	return TRUE;
+}
+
+VOID HandleSysCommand(WPARAM wParam, HWND hwnd)
+{
+	if (wParam == MOVETOMENU_NEW)
+	{
+		if (!ShouldExecuteCommand())
+		{
+			return;
+		}
+		MoveWindowToDesktop(hwnd, -1, bSwitchDesktopAfterMove);
+	}
+	else if (wParam >= MOVETOMENU_START && wParam <= MOVETOMENU_LAST)
+	{
+		if (!ShouldExecuteCommand())
+		{
+			return;
+		}
+		MoveWindowToDesktop(hwnd, (UINT)wParam - MOVETOMENU_START, bSwitchDesktopAfterMove);
+	}
+	// Hotkeys
+	else if (wParam == MOVETOMENU_LEFT || wParam == MOVETOMENU_LEFT_SWITCH)
+	{
+		if (!ShouldExecuteCommand())
+		{
+			return;
+		}
+		UINT index;
+		UINT count;
+		if (GetCurrentDesktopIndex(&index, &count))
+		{
+			Log("Current Index is %d", index);
+			Log("Current Count is %d", count);
+			if (index == 0)
+				return;
+			Log("Switch to %d", index - 1);
+			MoveWindowToDesktop(hwnd, --index, wParam == MOVETOMENU_LEFT_SWITCH);
+		}
+	}
+	else if (wParam == MOVETOMENU_RIGHT || wParam == MOVETOMENU_RIGHT_SWITCH)
+	{
+		if (!ShouldExecuteCommand())
+		{
+			return;
+		}
+		UINT index;
+		UINT count;
+		if (GetCurrentDesktopIndex(&index, &count))
+		{
+			Log("Current Index is %d", index);
+			Log("Current Count is %d", count);
+			if (index == -1)
+				return;
+			if (index >= MAXDESKTOPS)
+				return;
+			if (++index <= count)
+			{
+				Log("Switch to %d", index);
+				MoveWindowToDesktop(hwnd, index, false);
+
+			}
+			else if (bCreateNewDesktopOnMove)
+			{
+				Log("Create new desktop");
+				MoveWindowToDesktop(hwnd, -1, wParam == MOVETOMENU_RIGHT_SWITCH);
+			}
 		}
 	}
 }

@@ -13,21 +13,47 @@ namespace MoveToDesktop
 
 		private string _runnerPath;
 
+#if DEBUG
 		public string RunnerPath
 		{
 			get
 			{
 				if (_runnerPath == null)
 				{
-					_runnerPath = ExtractFile($"MoveToDesktopRunner.{Architecture}.exe", $"MoveToDesktop.{Architecture}.exe");
+					if (Architecture == "x86")
+					{
+						_runnerPath = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).Parent.Parent.FullName, "Win32", "MoveToDesktopRunner", $"MoveToDesktop.{Architecture}.exe");
+						
+					}
+					else
+					{
+						_runnerPath = Path.Combine(Directory.GetParent(Assembly.GetExecutingAssembly().Location).Parent.Parent.FullName, Architecture, "MoveToDesktopRunner", $"MoveToDesktop.{Architecture}.exe");
+					}
+
+
 				}
 				if (File.Exists(_runnerPath))
 					return _runnerPath;
 				return null;
 			}
 		}
-
 		
+#else
+		public string RunnerPath
+		{
+			get
+			{
+				if (_runnerPath == null)
+				{
+					_runnerPath = ExtractFile($"MoveToDesktop.{Architecture}.exe");
+				}
+				if (File.Exists(_runnerPath))
+					return _runnerPath;
+				return null;
+			}
+		}
+#endif
+
 		public string Mutex { get; set; }
 
 		public string ProcessName => $"MoveToDesktop.{Architecture}";

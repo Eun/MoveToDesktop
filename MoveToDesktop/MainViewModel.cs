@@ -323,7 +323,7 @@ namespace MoveToDesktop
 					FileName = Assembly.GetExecutingAssembly().Location,
 					UseShellExecute = true,
 					Verb = "runas",
-					Arguments = "--install-task",
+					Arguments = "--install-task --show-ui",
 				}) != null)
 				{
 					Application.Current.Shutdown();
@@ -361,7 +361,7 @@ namespace MoveToDesktop
 					FileName = Assembly.GetExecutingAssembly().Location,
 					UseShellExecute = true,
 					Verb = "runas",
-					Arguments = "--remove-task",
+					Arguments = "--remove-task --show-ui",
 				}) != null)
 				{
 					Application.Current.Shutdown();

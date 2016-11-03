@@ -19,8 +19,8 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>..\Debug\Any\MoveToDesktop\</OutputPath>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -28,7 +28,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\Release\Any\MoveToDesktop\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -68,6 +68,7 @@
     </ApplicationDefinition>
     <Compile Include="KeyItem.cs" />
     <Compile Include="Keys.cs" />
+    <Compile Include="Natives.cs" />
     <Compile Include="RelayCommand.cs" />
     <Compile Include="RunHelper.cs" />
     <Compile Include="Runner.cs" />
@@ -118,14 +119,9 @@
   <ItemGroup>
     <Resource Include="Resources\shield.ico" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
-    <EmbeddedResource Include="..\MoveToDesktopRunner\MoveToDesktopRunner.x64.exe">
-      <Link>Resources\MoveToDesktopRunner.x64.exe</Link>
-    </EmbeddedResource>
-    <EmbeddedResource Include="..\MoveToDesktopRunner\MoveToDesktopRunner.x86.exe">
-      <Link>Resources\MoveToDesktopRunner.x86.exe</Link>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\MoveToDesktop.x64.exe" />
+    <EmbeddedResource Include="Resources\MoveToDesktop.x86.exe" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

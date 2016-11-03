@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
-using System.Windows.Shell;
 using Mono.Options;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
@@ -28,23 +22,23 @@ namespace MoveToDesktop
 		private Mutex mutex;
 		private NotifyIcon notifyIcon;
 
-		private const int HWND_BROADCAST = 0xffff;
-		private static readonly int WM_SHOWME = RegisterWindowMessage("WM_SHOWME");
-		[DllImport("user32")]
-		private static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wparam, IntPtr lparam);
-		[DllImport("user32")]
-		private static extern int RegisterWindowMessage(string message);
-
-
 
 		private class Command
 		{
 			public enum Type
 			{
 				NormalStartup,
-				ShowStartup,
+				ShowUi,
 				InstallTask,
 				RemoveTask,
+				CreateDesktop,
+				SwitchDesktop,
+				ListDesktops,
+				RemoveDesktop,
+				RemoveEmptyDesktops,
+				MoveToDesktop,
+				AppParameter,
+				HwndParameter,
 				ShowHelp,
 			}
 
@@ -59,12 +53,13 @@ namespace MoveToDesktop
 			}
 		}
 
-		public App()
+		protected override void OnStartup(StartupEventArgs eventArgs)
 		{
-#if DEBUG
-			Debugger.Launch();
-#endif
-			Command command = new Command(Command.Type.NormalStartup);
+			base.OnStartup(eventArgs);
+//#if DEBUG
+			//Debugger.Launch();
+//#endif
+			List<Command> commands = new List<Command>();
 			var p = new OptionSet()
 			{
 				$"Usage: {Assembly.GetExecutingAssembly().GetName().Name} [command]",
@@ -75,7 +70,7 @@ namespace MoveToDesktop
 					{
 						if (v != null)
 						{
-							command = new Command(Command.Type.InstallTask);
+							commands.Add(new Command(Command.Type.InstallTask));
 						}
 					}
 				},
@@ -84,7 +79,7 @@ namespace MoveToDesktop
 					{
 						if (v != null)
 						{
-							command = new Command(Command.Type.RemoveTask);
+							commands.Add(new Command(Command.Type.RemoveTask));
 						}
 					}
 				},
@@ -93,7 +88,79 @@ namespace MoveToDesktop
 					{
 						if (v != null)
 						{
-							command = new Command(Command.Type.ShowStartup);
+							commands.Add(new Command(Command.Type.ShowUi));
+						}
+					}
+				},
+				{
+					"create-desktop", "Create a new desktop", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.CreateDesktop));
+						}
+					}
+				},
+				{
+					"switch-desktop=", "switch to a desktop", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.SwitchDesktop, v));
+						}
+					}
+				},
+				{
+					"list-desktops", "list all desktops", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.ListDesktops));
+						}
+					}
+				},
+				{
+					"remove-desktop=", "remove desktop", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.RemoveDesktop, v));
+						}
+					}
+				},
+				{
+					"remove-empty-desktops", "remove empty desktops", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.RemoveEmptyDesktops));
+						}
+					}
+				},
+				{
+					"move-to-desktop=", "move hwnd or app to desktop", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.MoveToDesktop, v));
+						}
+					}
+				},
+				{
+					"app=", "app parameter", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.AppParameter, v));
+						}
+					}
+				},
+				{
+					"hwnd=", "hwnd parameter", v =>
+					{
+						if (v != null)
+						{
+							commands.Add(new Command(Command.Type.HwndParameter, v));
 						}
 					}
 				},
@@ -102,7 +169,7 @@ namespace MoveToDesktop
 					{
 						if (v != null)
 						{
-							command = new Command(Command.Type.ShowHelp);
+							commands.Add(new Command(Command.Type.ShowHelp));
 						}
 					}
 				}
@@ -117,7 +184,7 @@ namespace MoveToDesktop
 			{
 			}
 
-			if (command.Id == Command.Type.ShowHelp)
+			if (commands.Any(x=> x.Id == Command.Type.ShowHelp))
 			{
 				p.WriteOptionDescriptions(Console.Out);
 				Application.Current.Shutdown();
@@ -125,7 +192,7 @@ namespace MoveToDesktop
 			}
 
 
-			if (command.Id == Command.Type.InstallTask || command.Id == Command.Type.RemoveTask)
+			if (commands.Any(x => x.Id == Command.Type.InstallTask || x.Id == Command.Type.RemoveTask))
 			{
 				// are we administrator
 				if (!MainViewModel.IsAdministrator)
@@ -136,7 +203,7 @@ namespace MoveToDesktop
 
 				}
 			}
-			if (command.Id == Command.Type.InstallTask || command.Id == Command.Type.RemoveTask || command.Id == Command.Type.ShowStartup)
+			if (commands.Any(x => x.Id == Command.Type.InstallTask || x.Id == Command.Type.RemoveTask || x.Id == Command.Type.ShowUi))
 			{
 				// wait until the mutex is free
 				do
@@ -154,19 +221,17 @@ namespace MoveToDesktop
 				mutex = new Mutex(false, Settings.GuiMutex);
 				if (!mutex.WaitOne(0, false))
 				{
-					PostMessage((IntPtr) HWND_BROADCAST, WM_SHOWME, IntPtr.Zero, IntPtr.Zero);
+					using (var wh = new EventWaitHandle(false, EventResetMode.AutoReset, "MoveToDesktopShow"))
+					{
+						wh.Set();
+					}
+
 					Application.Current.Shutdown();
 					return;
 				}
 			}
 
 
-			Application.Current.Exit += (sender, args) =>
-			{
-				RunHelper.Exit();
-				mutex.ReleaseMutex();
-				
-			};
 
 			try
 			{
@@ -179,14 +244,33 @@ namespace MoveToDesktop
 				return;
 			}
 
+			if (commands.Count == 0)
+			{
+				commands.Add(new Command(Command.Type.NormalStartup));
+			}
 
+			RunCommands(commands);
+		}
+
+
+		private void SetupGui()
+		{
+			if (mainWindow != null)
+				return;
 			mainWindow = new MainWindow();
 
-			mainWindow.SourceInitialized += (sender, args) =>
+			new Task(() =>
 			{
-				HwndSource source = PresentationSource.FromVisual(mainWindow) as HwndSource;
-				source?.AddHook(WndProc);
-			};
+				using (var wh = new EventWaitHandle(false, EventResetMode.AutoReset, "MoveToDesktopShow"))
+				{
+					while (wh.WaitOne())
+					{
+						Dispatcher.BeginInvoke(new Action(() => {
+							ShowWindow();
+						}));
+					}
+				}
+			}).Start();
 
 			mainWindow.StateChanged += (sender, args) =>
 			{
@@ -214,70 +298,65 @@ namespace MoveToDesktop
 			};
 
 			notifyIcon.Visible = !Settings.HideTray;
-
-
-			RunCommand(command);
-			
 		}
 
-		private void RunCommand(Command command)
+		private void RunCommands(ICollection<Command> commands)
 		{
-			switch (command.Id)
+			foreach (var command in commands)
 			{
-				case Command.Type.InstallTask:
-					MainViewModel.InstallTask();
-					RunCommand(new Command(Command.Type.NormalStartup));
-					break;
-				case Command.Type.RemoveTask:
-					MainViewModel.RemoveTask();
-					RunCommand(new Command(Command.Type.NormalStartup));
-					break;
-				case Command.Type.ShowStartup:
-					mainWindow.Show();
-					break;
-				case Command.Type.NormalStartup:
-				default:
-					if (!Settings.FirstTime)
-					{
-						mainWindow.ShowInTaskbar = false;
-						mainWindow.WindowState = WindowState.Minimized;
+				switch (command.Id)
+				{
+					case Command.Type.InstallTask:
+						MainViewModel.InstallTask();
+						break;
+					case Command.Type.RemoveTask:
+						MainViewModel.RemoveTask();
+						break;
+					case Command.Type.ShowUi:
+						SetupGui();
 						mainWindow.Show();
-						mainWindow.Hide();
-						mainWindow.ShowInTaskbar = true;
-						Settings.FirstTime = false;
-					}
-					else
-					{
-						mainWindow.Show();
-					}
-					break;
+						break;
+
+					
+					case Command.Type.NormalStartup:
+					default:
+						SetupGui();
+						if (!Settings.FirstTime)
+						{
+							mainWindow.WindowStyle = WindowStyle.None;
+							mainWindow.Visibility = Visibility.Hidden;
+							mainWindow.ShowInTaskbar = false;
+							mainWindow.Show();
+							mainWindow.Hide();
+						}
+						else
+						{
+							mainWindow.Show();
+							Settings.FirstTime = false;
+						}
+						break;
+				}
 			}
+		}
+
+		protected override void OnExit(ExitEventArgs e)
+		{
+			RunHelper.Exit();
+			mutex.ReleaseMutex();
+			base.OnExit(e);
 		}
 
 
 		private void ShowWindow()
 		{
-			if (mainWindow.IsVisible)
-			{
-				mainWindow.Activate();
-				// flash
-			}
-			else
-			{
-				mainWindow.Show();
-				
-			}
+			mainWindow.WindowStyle = WindowStyle.SingleBorderWindow;
+			mainWindow.Show();
+			mainWindow.Activate();
 			mainWindow.WindowState = WindowState.Normal;
+			mainWindow.ShowInTaskbar = true;
+			mainWindow.Visibility = Visibility.Visible;
+			mainWindow.Focus();
 
-		}
-
-		private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-		{
-			if (msg == WM_SHOWME)
-			{
-				ShowWindow();
-			}
-			return IntPtr.Zero;
 		}
 	}
 

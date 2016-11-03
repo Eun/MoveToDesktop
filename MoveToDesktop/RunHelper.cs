@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.ConstrainedExecution;
+
 using System.Runtime.InteropServices;
-using System.Security;
-using System.Text;
 using System.Threading;
+
 
 namespace MoveToDesktop
 {
@@ -59,9 +56,16 @@ namespace MoveToDesktop
 
 		private static void KillInstances()
 		{
+			using (var wh = new EventWaitHandle(false, EventResetMode.AutoReset, "MoveToDesktopShutdown"))
+			{
+				wh.Set();
+			}
+			// give a bit time to react
+			Thread.Sleep(100);
+
 			foreach (var runner in Runners)
 			{
-				KillInstances(runner);
+				ForceKillInstances(runner);
 			}
 		}
 
@@ -72,6 +76,7 @@ namespace MoveToDesktop
 			{
 				return Process.Start(new ProcessStartInfo()
 				{
+					WorkingDirectory = Path.GetDirectoryName(runner.RunnerPath),
 					FileName = runner.RunnerPath,
 					UseShellExecute = true,
 				}) != null;
@@ -79,23 +84,11 @@ namespace MoveToDesktop
 			return false;
 		}
 
+		
 
-
-		[DllImport("kernel32.dll")]
-		static extern IntPtr OpenMutex(uint dwDesiredAccess, bool bInheritHandle, string lpName);
-
-		const UInt32 MUTEX_ALL_ACCESS = 0x1F0001;
-
-		[DllImport("kernel32.dll", SetLastError = true)]
-		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
-		[SuppressUnmanagedCodeSecurity]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		static extern bool CloseHandle(IntPtr hObject);
-
-
-		private static bool KillInstances(Runner runner)
+		private static bool ForceKillInstances(Runner runner)
 		{
-			var mutex = OpenMutex(MUTEX_ALL_ACCESS, false, runner.Mutex);
+			var mutex = Natives.OpenMutex(Natives.MUTEX_ALL_ACCESS, false, runner.Mutex);
 
 			if (mutex == IntPtr.Zero)
 			{
@@ -103,10 +96,10 @@ namespace MoveToDesktop
 			}
 			else
 			{
-				CloseHandle(mutex);
-
+				Natives.CloseHandle(mutex);
 				try
 				{
+					
 					foreach (var process in Process.GetProcessesByName(runner.ProcessName))
 					{
 						process.Kill();
@@ -118,9 +111,6 @@ namespace MoveToDesktop
 				}
 				return true;
 			}
-
-
-
 		}
 
 
