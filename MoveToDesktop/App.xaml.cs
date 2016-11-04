@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -31,14 +33,7 @@ namespace MoveToDesktop
 				ShowUi,
 				InstallTask,
 				RemoveTask,
-				CreateDesktop,
-				SwitchDesktop,
-				ListDesktops,
-				RemoveDesktop,
-				RemoveEmptyDesktops,
-				MoveToDesktop,
-				AppParameter,
-				HwndParameter,
+				GetApiHelper,
 				ShowHelp,
 			}
 
@@ -93,75 +88,9 @@ namespace MoveToDesktop
 					}
 				},
 				{
-					"create-desktop", "Create a new desktop", v =>
+					"get-api-helper:", "Get the api helper for hwnd", v =>
 					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.CreateDesktop));
-						}
-					}
-				},
-				{
-					"switch-desktop=", "switch to a desktop", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.SwitchDesktop, v));
-						}
-					}
-				},
-				{
-					"list-desktops", "list all desktops", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.ListDesktops));
-						}
-					}
-				},
-				{
-					"remove-desktop=", "remove desktop", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.RemoveDesktop, v));
-						}
-					}
-				},
-				{
-					"remove-empty-desktops", "remove empty desktops", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.RemoveEmptyDesktops));
-						}
-					}
-				},
-				{
-					"move-to-desktop=", "move hwnd or app to desktop", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.MoveToDesktop, v));
-						}
-					}
-				},
-				{
-					"app=", "app parameter", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.AppParameter, v));
-						}
-					}
-				},
-				{
-					"hwnd=", "hwnd parameter", v =>
-					{
-						if (v != null)
-						{
-							commands.Add(new Command(Command.Type.HwndParameter, v));
-						}
+						commands.Add(new Command(Command.Type.GetApiHelper, v));
 					}
 				},
 				{
@@ -180,8 +109,11 @@ namespace MoveToDesktop
 			{
 				extra = p.Parse(Environment.GetCommandLineArgs());
 			}
-			catch
+			catch (Exception e)
 			{
+#if DEBUG
+				Debug.WriteLine(e.Message);
+#endif
 			}
 
 			if (commands.Any(x=> x.Id == Command.Type.ShowHelp))
@@ -317,13 +249,21 @@ namespace MoveToDesktop
 						mainWindow.Show();
 						break;
 
-					
+					case Command.Type.GetApiHelper:
+						Int64 hwnd;
+						if (command.Argument == null)
+							Console.WriteLine(RunHelper.GetApiHelper());
+						else if (Int64.TryParse(command.Argument, out hwnd))
+							Console.WriteLine(RunHelper.GetApiHelper(hwnd));
+						Application.Current.Shutdown();
+						return;
+
 					case Command.Type.NormalStartup:
 					default:
 						SetupGui();
 						if (!Settings.FirstTime)
 						{
-							mainWindow.WindowStyle = WindowStyle.None;
+							//mainWindow.WindowStyle = WindowStyle.None;
 							mainWindow.Visibility = Visibility.Hidden;
 							mainWindow.ShowInTaskbar = false;
 							mainWindow.Show();
@@ -349,14 +289,16 @@ namespace MoveToDesktop
 
 		private void ShowWindow()
 		{
-			mainWindow.WindowStyle = WindowStyle.SingleBorderWindow;
 			mainWindow.Show();
 			mainWindow.Activate();
 			mainWindow.WindowState = WindowState.Normal;
 			mainWindow.ShowInTaskbar = true;
 			mainWindow.Visibility = Visibility.Visible;
 			mainWindow.Focus();
-
+			if (Settings.LastUpdateCheck.AddDays(7) < DateTime.UtcNow)
+			{
+				MainViewModel.CheckForUpdates();
+			}
 		}
 	}
 

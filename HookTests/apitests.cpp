@@ -4,7 +4,7 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 #include <Windows.h>
-#include "../Hook/hook.h"
+#include "../hooklib/hook.h"
 
 
 namespace HookTests

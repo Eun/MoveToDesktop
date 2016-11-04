@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -114,23 +114,10 @@ namespace MoveToDesktop
 		}
 
 
-		
 
 
 
 
-
-		[DllImport("kernel32.dll")]
-		static extern IntPtr GetCurrentProcess();
-
-		[DllImport("kernel32.dll")]
-		static extern IntPtr GetModuleHandle(string moduleName);
-
-		[DllImport("kernel32")]
-		static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
-
-		[DllImport("kernel32.dll")]
-		static extern bool IsWow64Process(IntPtr hProcess, out bool wow64Process);
 
 		public static bool Is64BitOperatingSystem()
 		{
@@ -138,19 +125,43 @@ namespace MoveToDesktop
 			if (IntPtr.Size == 8)
 				return true;
 			// Check if this process is an x86 process running on an x64 environment.
-			IntPtr moduleHandle = GetModuleHandle("kernel32");
+			IntPtr moduleHandle = Natives.GetModuleHandle("kernel32");
 			if (moduleHandle != IntPtr.Zero)
 			{
-				IntPtr processAddress = GetProcAddress(moduleHandle, "IsWow64Process");
+				IntPtr processAddress = Natives.GetProcAddress(moduleHandle, "IsWow64Process");
 				if (processAddress != IntPtr.Zero)
 				{
 					bool result;
-					if (IsWow64Process(GetCurrentProcess(), out result) && result)
+					if (Natives.IsWow64Process(Natives.GetCurrentProcess(), out result) && result)
 						return true;
 				}
 			}
 			// The environment must be an x86 environment.
 			return false;
+		}
+
+		public static string GetApiHelper(Int64 hwnd = 0)
+		{
+			if (hwnd != 0 && Is64BitOperatingSystem())
+			{
+				IntPtr processId;
+				if (Natives.GetWindowThreadProcessId(new IntPtr(hwnd), out processId) != 0)
+				{
+					var process = Process.GetProcessById(processId.ToInt32());
+					if (process != null)
+					{
+						bool result;
+						if (Natives.IsWow64Process(process.Handle, out result))
+						{
+							if (!result)
+							{
+								return Runners.FirstOrDefault(x => x.Architecture == "x64").RunnerPath;
+							}
+						}
+					}
+				}
+			}
+			return Runners.FirstOrDefault(x => x.Architecture == "x86").RunnerPath;
 		}
 	}
 }

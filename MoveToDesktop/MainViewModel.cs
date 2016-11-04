@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Security.Policy;
 using System.Security.Principal;
 
 using System.Text;
@@ -11,6 +13,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32.TaskScheduler;
+using Newtonsoft.Json.Linq;
 
 
 namespace MoveToDesktop
@@ -37,17 +40,62 @@ namespace MoveToDesktop
 				RemoveTask();
 				OnPropertyChanged(nameof(IsTaskInstalled));
 			});
+
+			RestartRunnerCommand = new RelayCommand(o =>
+			{
+				Settings.HotKeyMoveLeft = BuildKey(HotKeyLeft);
+				Settings.HotKeyMoveRight = BuildKey(HotKeyRight);
+				Settings.HotKeyMoveAndSwitchLeft = BuildKey(HotKeyLeftSwitch);
+				Settings.HotKeyMoveAndSwitchRight = BuildKey(HotKeyRightSwitch);
+				Settings.HotKeySwitchDesktop1 = BuildKey(HotKeySwitchDesktop1);
+				Settings.HotKeySwitchDesktop2 = BuildKey(HotKeySwitchDesktop2);
+				Settings.HotKeySwitchDesktop3 = BuildKey(HotKeySwitchDesktop3);
+
+				HotKeyLeft = ExtractKey(Settings.HotKeyMoveLeft);
+				HotKeyRight = ExtractKey(Settings.HotKeyMoveRight);
+				HotKeyLeftSwitch = ExtractKey(Settings.HotKeyMoveAndSwitchLeft);
+				HotKeyRightSwitch = ExtractKey(Settings.HotKeyMoveAndSwitchRight);
+				HotKeySwitchDesktop1 = ExtractKey(Settings.HotKeySwitchDesktop1);
+				HotKeySwitchDesktop2 = ExtractKey(Settings.HotKeySwitchDesktop2);
+				HotKeySwitchDesktop3 = ExtractKey(Settings.HotKeySwitchDesktop3);
+				OnPropertyChanged(nameof(HotKeyLeft));
+				OnPropertyChanged(nameof(HotKeyRight));
+				OnPropertyChanged(nameof(HotKeyLeftSwitch));
+				OnPropertyChanged(nameof(HotKeyRightSwitch));
+				OnPropertyChanged(nameof(HotKeySwitchDesktop1));
+				OnPropertyChanged(nameof(HotKeySwitchDesktop2));
+				OnPropertyChanged(nameof(HotKeySwitchDesktop3));
+
+				RunHelper.Exit();
+				RunHelper.Start();
+			});
+
+
+			HotKeyLeft = ExtractKey(Settings.HotKeyMoveLeft);
+			HotKeyRight = ExtractKey(Settings.HotKeyMoveRight);
+			HotKeyLeftSwitch = ExtractKey(Settings.HotKeyMoveAndSwitchLeft);
+			HotKeyRightSwitch = ExtractKey(Settings.HotKeyMoveAndSwitchRight);
+			HotKeySwitchDesktop1 = ExtractKey(Settings.HotKeySwitchDesktop1);
+			HotKeySwitchDesktop2 = ExtractKey(Settings.HotKeySwitchDesktop2);
+			HotKeySwitchDesktop3 = ExtractKey(Settings.HotKeySwitchDesktop3);
+			OnPropertyChanged(nameof(HotKeyLeft));
+			OnPropertyChanged(nameof(HotKeyRight));
+			OnPropertyChanged(nameof(HotKeyLeftSwitch));
+			OnPropertyChanged(nameof(HotKeyRightSwitch));
+			OnPropertyChanged(nameof(HotKeySwitchDesktop1));
+			OnPropertyChanged(nameof(HotKeySwitchDesktop2));
+			OnPropertyChanged(nameof(HotKeySwitchDesktop3));
 		}
 
-
-		public string Title
+		public static string Version
 		{
 			get
 			{
-				var version = Assembly.GetEntryAssembly().GetName().Version;
-				return $"MoveToDesktop {version.Major}.{version.Minor}";
+				var version = Assembly.GetExecutingAssembly().GetName().Version;
+				return $"{version.Major}.{version.Minor}";
 			}
 		}
+		public static string Title => $"MoveToDesktop {Version}";
 
 		public bool? SwitchDesktopAfterMove
 		{
@@ -97,7 +145,7 @@ namespace MoveToDesktop
 			}
 		}
 
-		public ListCollectionView Keys
+		public static ListCollectionView Keys
 		{
 			get
 			{
@@ -131,12 +179,12 @@ namespace MoveToDesktop
 			}
 		}
 
-		private KeyItem GetKey(string key)
+		private static KeyItem GetKey(string key)
 		{
 			int offset;
 			return GetKey(key, out offset);
 		}
-		private KeyItem GetKey(string key, out int offset)
+		private static KeyItem GetKey(string key, out int offset)
 		{
 			for (int i = 0; i < Keys.SourceCollection.Cast<KeyItem>().Count(); i++)
 			{
@@ -150,136 +198,135 @@ namespace MoveToDesktop
 			offset = -1;
 			return null;
 		}
-
-
-		private int ExtractKey(string key, int offset)
+		private static KeyItem GetKey(int offset)
 		{
-			var keys = key.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-			if (keys.Length > offset)
-			{
-				int result;
-				if (GetKey(keys[offset], out result) != null)
-				{
-					return result;
-				}
-			}
-			return 0;
+			return Keys.SourceCollection.Cast<KeyItem>().ElementAtOrDefault(offset);
 		}
 
-		private string BuildKey(string hotkey, int key, int offset)
+		private static int[] ExtractKey(string hotkey)
 		{
-			var keys = new List<string>(hotkey.Split(new char[] {'+'}, StringSplitOptions.RemoveEmptyEntries));
-			if (keys.Count > offset)
+			var keyCodes = new List<int>();
+			var keys = hotkey.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+			for (int i = 0; i < keys.Length; i++)
 			{
-				keys[offset] = Keys.SourceCollection.Cast<KeyItem>().ElementAt(key).Name;
+				int result;
+				if (GetKey(keys[i], out result) != null)
+				{
+					keyCodes.Add(result);
+				}
 			}
-			else
-			{
-				keys.Add(Keys.SourceCollection.Cast<KeyItem>().ElementAt(key).Name);
-			}
-			keys.RemoveAll(x => x.Equals("None"));
 
+			int noneKey;
+			GetKey("None", out noneKey);
+			while (keyCodes.Count < 4)
+			{
+				keyCodes.Add(noneKey);
+			}
+
+			return keyCodes.ToArray();
+		}
+
+		private static string BuildKey(params int[] keyparts)
+		{
+			var keys = new List<KeyItem>();
+
+			for (int i = 0; i < keyparts.Count(); i++)
+			{
+				var key = GetKey(keyparts[i]);
+				if (key != null)
+					keys.Add(key);
+			}
+
+			// remove modifiers after keys
 			bool hasKey = false;
 			for (int i = 0; i < keys.Count; i++)
 			{
-				var cat = GetKey(keys[i]).Category;
-
-				if (hasKey && cat == "Modifiers")
+				if (hasKey && keys[i].Category == "Modifiers")
 				{
-					keys[i] = "None";
+					keys[i] = GetKey("None");
 				}
-
-				hasKey |= (cat == "Keys");
-				
+				hasKey |= (keys[i].Category == "Keys");
 			}
 
-			keys.RemoveAll(x => x.Equals("None"));
-
-			if (GetKey(keys[keys.Count - 1]).Category == "Modifiers")
+			keys.RemoveAll(x => x.Name.Equals("None"));
+			
+			// if the last key is a modifier
+			if (keys.Count > 0)
 			{
-				keys.Clear();
+				if (GetKey(keys[keys.Count - 1].Name).Category == "Modifiers")
+				{
+					keys.Clear();
+				}
 			}
 
-			return string.Join("+", keys);
+			return string.Join("+", keys.Select(x=> x.Name));
 		}
 
-		public int HotKeyLeft1
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveLeft, 0);
-			}
-			set { Settings.MoveLeft = BuildKey(Settings.MoveLeft, value, 0); }
-		}
+		public int[] HotKeyLeft { get; set; }
 
-		public int HotKeyLeft2
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveLeft, 1);
-			}
-			set { Settings.MoveLeft = BuildKey(Settings.MoveLeft, value, 1); }
-		}
 
-		public int HotKeyLeft3
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveLeft, 2);
-			}
-			set { Settings.MoveLeft = BuildKey(Settings.MoveLeft, value, 2); }
-		}
+		public int[] HotKeyRight { get; set; }
 
-		public int HotKeyLeft4
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveLeft, 3);
-			}
-			set { Settings.MoveLeft = BuildKey(Settings.MoveLeft, value, 3); }
-		}
 
-		public int HotKeyRight1
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveRight, 0);
-			}
-			set { Settings.MoveRight = BuildKey(Settings.MoveRight, value, 0); }
-		}
+		public int[] HotKeyLeftSwitch { get; set; }
 
-		public int HotKeyRight2
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveRight, 1);
-			}
-			set { Settings.MoveRight = BuildKey(Settings.MoveRight, value, 1); }
-		}
 
-		public int HotKeyRight3
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveRight, 2);
-			}
-			set { Settings.MoveRight = BuildKey(Settings.MoveRight, value, 2); }
-		}
+		public int[] HotKeyRightSwitch { get; set; }
 
-		public int HotKeyRight4
-		{
-			get
-			{
-				return ExtractKey(Settings.MoveRight, 3);
-			}
-			set { Settings.MoveRight = BuildKey(Settings.MoveRight, value, 3); }
-		}
+		public int[] HotKeySwitchDesktop1 { get; set; }
+		public int[] HotKeySwitchDesktop2 { get; set; }
+		public int[] HotKeySwitchDesktop3 { get; set; }
 
-		public ICommand RestartRunnerCommand { get; internal set; } = new RelayCommand(o =>
+
+
+		public ICommand RestartRunnerCommand { get; private set; }
+
+		public ICommand OpenConfig { get; private set; } = new RelayCommand(o =>
 		{
-			RunHelper.Exit();
-			RunHelper.Start();
+			Process.Start(new ProcessStartInfo()
+			{
+				FileName = "explorer.exe",
+				Arguments = $"/select,\"{Settings.ConfigFile}\"",
+				UseShellExecute = true,
+			});
 		});
+
+		public ICommand CheckForUpdatesCommand { get; private set; } = new RelayCommand(o =>
+		{
+			CheckForUpdates();
+		});
+
+		private static System.Threading.Tasks.Task updateTask = null;
+
+		public static void CheckForUpdates()
+		{
+			if (updateTask == null)
+			{
+				updateTask = new System.Threading.Tasks.Task(() =>
+				{
+					try
+					{
+						var updateChecker = new GithubUpdateChecker("Eun", "MoveToDesktop");
+						var info = updateChecker.GetLatestVersion();
+
+						if (info.Version > Assembly.GetExecutingAssembly().GetName().Version)
+						{
+							if (MessageBox.Show($"There is a new Version available!\n\nName:    {info.Name}\nVersion: {info.Version}\n\nDo you want to download it?", Title, MessageBoxButton.YesNoCancel, MessageBoxImage.Information) == MessageBoxResult.Yes)
+							{
+								Process.Start(new ProcessStartInfo(info.DownloadUrl));
+							}
+						}
+					}
+					finally
+					{
+						Settings.LastUpdateCheck = DateTime.UtcNow;
+						updateTask = null;
+					}
+				});
+
+				updateTask.Start();
+			}
+		}
 
 
 		private static readonly string taskName = "MoveToDesktop";
@@ -337,13 +384,12 @@ namespace MoveToDesktop
 
 				td.Triggers.Add(new LogonTrigger());
 
-				// Create an action that will launch Notepad whenever the trigger fires
+				
 				td.Actions.Add(new ExecAction(Assembly.GetExecutingAssembly().Location));
 
 				//td.Settings.RunOnlyIfLoggedOn = true;
 				td.Principal.RunLevel = TaskRunLevel.Highest;
 
-				// Register the task in the root folder
 				ts.RootFolder.RegisterTaskDefinition(taskName, td);
 
 				// Force the view

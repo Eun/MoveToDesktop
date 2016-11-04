@@ -171,7 +171,7 @@
     <ClCompile Include="apitests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Hook\Hook.vcxproj">
+    <ProjectReference Include="..\hooklib\hooklib.vcxproj">
       <Project>{88d0bb04-305d-47dc-b4bd-9d3398faffe6}</Project>
     </ProjectReference>
   </ItemGroup>

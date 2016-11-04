@@ -21,6 +21,7 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <process.h>
 #include "VirtualDesktops.h"
@@ -141,7 +142,7 @@ BOOL InitCom()
 	return TRUE;
 }
 
-VOID FreeCom()
+EXPORT VOID FreeCom()
 {
 	if (ComStatus == COMSTATUS_INITIALIZED)
 	{
@@ -153,7 +154,7 @@ VOID FreeCom()
 	}
 }
 
-VOID ReadIni()
+EXPORT VOID ReadIni()
 {
 	if (bReadIni == true)
 		return;
@@ -182,7 +183,7 @@ INT GetIndexOfItem(HMENU menu, UINT id)
 	return -1;
 }
 
-VOID AddMenu(HWND hwnd, HMENU menu)
+EXPORT VOID AddMenu(HWND hwnd, HMENU menu)
 {
 	if (bAddedMenu == true)
 		return;
@@ -283,7 +284,7 @@ VOID AddMenu(HWND hwnd, HMENU menu)
 	}
 }
 
-VOID RemoveMenu(HWND hwnd, HMENU menu)
+EXPORT VOID RemoveMenu(HWND hwnd, HMENU menu)
 {
 	if (bAddedMenu == false)
 		return;
@@ -484,11 +485,6 @@ HWND GetRoot(HWND hwnd)
 
 BOOL MoveWindowToDesktop(HWND hwnd, IVirtualDesktop* pDesktop)
 {
-	if (!InitCom())
-	{
-		Log("InitCom failed");
-		return FALSE;
-	}
 	BOOL status = FALSE;
 	GUID id;
 	if (SUCCEEDED(pDesktop->GetID(&id)))
@@ -630,7 +626,58 @@ EXPORT BOOL HasDesktopWindows(UINT index)
 	return status;
 }
 
+EXPORT BOOL RemoveEmptyDesktops()
+{
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+	IVirtualDesktop *pFallbackDesktop = nullptr;
+	IObjectArray *pObjectArray;
+	if (SUCCEEDED(pDesktopManagerInternal->GetDesktops(&pObjectArray)))
+	{
+		BOOL status = TRUE;
+		UINT count;
+		if (SUCCEEDED(pObjectArray->GetCount(&count)) && count > 0)
+		{
+			for (UINT i = 0; i < count; i++)
+			{
+				IVirtualDesktop *pDesktop;
+				if (SUCCEEDED(pObjectArray->GetAt(i, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
+				{
+					if (HasDesktopWindows(pDesktop))
+					{
+						pFallbackDesktop = pDesktop;
+						break;
+					}
+					pDesktop->Release();
+				}
+			}
 
+			if (pFallbackDesktop != nullptr)
+			{
+				for (UINT i = 0; i < count; i++)
+				{
+					IVirtualDesktop *pDesktop;
+					if (SUCCEEDED(pObjectArray->GetAt(i, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
+					{
+						if (pDesktop != pFallbackDesktop && !HasDesktopWindows(pDesktop))
+						{
+							status |= pDesktopManagerInternal->RemoveDesktop(pDesktop, pFallbackDesktop);
+						}
+						pDesktop->Release();
+					}
+				}
+				pFallbackDesktop->Release();
+			}
+
+		}
+		pObjectArray->Release();
+		return status;
+	}
+	return FALSE;
+}
 
 
 BOOL GetCurrentDesktop(IVirtualDesktop** pDesktop)
@@ -640,6 +687,12 @@ BOOL GetCurrentDesktop(IVirtualDesktop** pDesktop)
 
 BOOL MoveWindowToDesktop(HWND hwnd, UINT index, bool switchTo)
 {
+	if (!InitCom())
+	{
+		Log("InitCom failed");
+		return FALSE;
+	}
+
 	hwnd = GetRoot(hwnd);
 	BOOL status = FALSE;
 	HWND focusHwnd = NULL;
@@ -666,6 +719,7 @@ BOOL MoveWindowToDesktop(HWND hwnd, UINT index, bool switchTo)
 	else
 	{
 		Log("Moving %X to %X", hwnd, index);
+		Log("ThreadId %X", GetCurrentThreadId());
 		// move to existant
 		if (!GetDesktop(&pDesktop, index))
 		{
@@ -716,15 +770,16 @@ BOOL ShouldExecuteCommand()
 	return TRUE;
 }
 
-VOID HandleSysCommand(WPARAM wParam, HWND hwnd)
+EXPORT VOID HandleSysCommand(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
+	// Menu
 	if (wParam == MOVETOMENU_NEW)
 	{
 		if (!ShouldExecuteCommand())
 		{
 			return;
 		}
-		MoveWindowToDesktop(hwnd, -1, bSwitchDesktopAfterMove);
+		MoveWindowToDesktop(hwnd, -1, lParam == 1 ? false : bSwitchDesktopAfterMove);
 	}
 	else if (wParam >= MOVETOMENU_START && wParam <= MOVETOMENU_LAST)
 	{
@@ -732,7 +787,7 @@ VOID HandleSysCommand(WPARAM wParam, HWND hwnd)
 		{
 			return;
 		}
-		MoveWindowToDesktop(hwnd, (UINT)wParam - MOVETOMENU_START, bSwitchDesktopAfterMove);
+		MoveWindowToDesktop(hwnd, (UINT)wParam - MOVETOMENU_START, lParam == 1 ? false : bSwitchDesktopAfterMove);
 	}
 	// Hotkeys
 	else if (wParam == MOVETOMENU_LEFT || wParam == MOVETOMENU_LEFT_SWITCH)
@@ -750,7 +805,7 @@ VOID HandleSysCommand(WPARAM wParam, HWND hwnd)
 			if (index == 0)
 				return;
 			Log("Switch to %d", index - 1);
-			MoveWindowToDesktop(hwnd, --index, wParam == MOVETOMENU_LEFT_SWITCH);
+			MoveWindowToDesktop(hwnd, --index, lParam == 1 ? false : wParam == MOVETOMENU_LEFT_SWITCH);
 		}
 	}
 	else if (wParam == MOVETOMENU_RIGHT || wParam == MOVETOMENU_RIGHT_SWITCH)
@@ -778,107 +833,8 @@ VOID HandleSysCommand(WPARAM wParam, HWND hwnd)
 			else if (bCreateNewDesktopOnMove)
 			{
 				Log("Create new desktop");
-				MoveWindowToDesktop(hwnd, -1, wParam == MOVETOMENU_RIGHT_SWITCH);
+				MoveWindowToDesktop(hwnd, -1, lParam == 1 ? false : wParam == MOVETOMENU_RIGHT_SWITCH);
 			}
 		}
 	}
-}
-
-LRESULT CALLBACK CallWndProc(INT code, WPARAM wParam, LPARAM lParam)
-{
-#define msg ((PCWPSTRUCT)lParam)
-	if (code == HC_ACTION)
-	{
-		switch (msg->message)
-		{
-			// I am not sure if this is required, lets leve it in
-			case WM_ACTIVATE:
-			{
-				Log("WM_ACTIVATE");
-				GetSystemMenu(msg->hwnd, FALSE);
-				break;
-			}
-
-			// Populate menu
-			case WM_INITMENUPOPUP:
-			{
-				Log("WM_INITMENUPOPUP");
-				AddMenu(msg->hwnd, (HMENU)msg->wParam);
-				break;
-			}
-
-			// Some applications trigger WM_INITMENUPOPUP never or to late, thats why we use WM_ENTERIDLE
-			case WM_ENTERIDLE:
-			{
-				Log("WM_ENTERIDLE");
-				if (msg->wParam == MSGF_MENU)
-				{
-					AddMenu(msg->hwnd, (HMENU)INVALID_HANDLE_VALUE);
-					break;
-				}
-				break;
-			}
-
-			// Remove Entry again
-			case WM_UNINITMENUPOPUP:
-			{
-				Log("WM_UNINITMENUPOPUP");
-				RemoveMenu(msg->hwnd, (HMENU)msg->wParam);
-				break;
-			}
-
-			// For those who doesn't fire WM_UNINITMENUPOPUP 
-			case WM_MENUSELECT:
-			{
-				Log("WM_ENTERIDLE");
-				if (msg->lParam == NULL && HIWORD(msg->wParam) == 0xFFFF)
-				{
-					RemoveMenu(msg->hwnd, (HMENU)INVALID_HANDLE_VALUE);
-				}
-				break;
-			}
-
-			// Do the command
-			case WM_SYSCOMMAND:
-			{
-				Log("WM_SYSCOMMAND %X %X", msg->wParam, msg->hwnd);
-				HandleSysCommand(msg->wParam, msg->hwnd);
-				break;
-			}
-		}
-	}
-	return CallNextHookEx(NULL, code, wParam, lParam);
-#undef msg
-}
-
-LRESULT CALLBACK GetMsgProc(INT code, WPARAM wParam, LPARAM lParam)
-{
-#define msg ((PMSG)lParam)
-	if (code == HC_ACTION)
-	{
-		switch (msg->message)
-		{
-			case WM_SYSCOMMAND:
-			{
-				Log("WM_SYSCOMMAND");
-				HandleSysCommand(msg->wParam, msg->hwnd);
-				break;
-			}
-		}
-	}
-		return CallNextHookEx(NULL, code, wParam, lParam);
-#undef msg
-}
-
-BOOL WINAPI DllMain(HINSTANCE handle, DWORD dwReason, LPVOID reserved)
-{
-	if (dwReason == DLL_PROCESS_ATTACH)
-	{
-		ReadIni();
-	}
-	else if (dwReason == DLL_PROCESS_DETACH)
-	{
-		FreeCom();
-	}
-	return TRUE;
 }

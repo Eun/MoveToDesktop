@@ -5,3 +5,4 @@ extern BOOL MoveWindowToDesktop(HWND hwnd, UINT index);
 extern BOOL CreateDesktop(PUINT index);
 extern BOOL RemoveDesktop(UINT index, UINT fallbackIndex);
 extern BOOL HasDesktopWindows(UINT index);
+extern BOOL RemoveEmptyDesktops();

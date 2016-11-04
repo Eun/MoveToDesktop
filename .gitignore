@@ -1,6 +1,7 @@
 /Release/
 /Debug/
 /packages/
+/ipch/
 
 *.opensdf
 *.sdf

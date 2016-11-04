@@ -19,5 +19,27 @@ namespace MoveToDesktop
 		[return: MarshalAs(UnmanagedType.Bool)]
 		internal static extern bool CloseHandle(IntPtr hObject);
 
+
+		[DllImport("kernel32.dll")]
+		internal static extern IntPtr GetCurrentProcess();
+
+		[DllImport("kernel32.dll")]
+		internal static extern IntPtr GetModuleHandle(string moduleName);
+
+		[DllImport("kernel32")]
+		internal static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+		[DllImport("kernel32.dll")]
+		internal static extern bool IsWow64Process(IntPtr hProcess, out bool wow64Process);
+
+
+
+
+
+		[DllImport("user32.dll")]
+		internal static extern int GetWindowThreadProcessId(IntPtr hWnd, out IntPtr lpdwProcessId);
+
+
+
 	}
 }
