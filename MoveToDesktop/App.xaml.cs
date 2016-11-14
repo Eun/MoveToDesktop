@@ -1,14 +1,32 @@
-﻿using System;
+﻿/**
+* MoveToDesktop
+*
+* Copyright (C) 2015-2016 by Tobias Salzmann
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Interop;
 using Mono.Options;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
@@ -116,10 +134,16 @@ namespace MoveToDesktop
 #endif
 			}
 
+
+			if (commands.Count == 0)
+			{
+				commands.Add(new Command(Command.Type.NormalStartup));
+			}
+
 			if (commands.Any(x=> x.Id == Command.Type.ShowHelp))
 			{
 				p.WriteOptionDescriptions(Console.Out);
-				Application.Current.Shutdown();
+				Current.Shutdown();
 				return;
 			}
 
@@ -130,7 +154,7 @@ namespace MoveToDesktop
 				if (!MainViewModel.IsAdministrator)
 				{
 					Console.Out.WriteLine("This command must be run as administrator");
-					Application.Current.Shutdown();
+					Current.Shutdown();
 					return;
 
 				}
@@ -148,7 +172,8 @@ namespace MoveToDesktop
 					}
 				} while (_contentLoaded);
 			}
-			else
+
+			if (commands.Any(x => x.Id == Command.Type.NormalStartup || x.Id == Command.Type.ShowUi))
 			{
 				mutex = new Mutex(false, Settings.GuiMutex);
 				if (!mutex.WaitOne(0, false))
@@ -158,7 +183,7 @@ namespace MoveToDesktop
 						wh.Set();
 					}
 
-					Application.Current.Shutdown();
+					Current.Shutdown();
 					return;
 				}
 			}
@@ -172,14 +197,11 @@ namespace MoveToDesktop
 			catch (Exception e)
 			{
 				MessageBox.Show($"Could not extract runner!\n\n{e.Message}", "MoveToDesktop", MessageBoxButton.OK, MessageBoxImage.Error);
-				Application.Current.Shutdown();
+				Current.Shutdown();
 				return;
 			}
 
-			if (commands.Count == 0)
-			{
-				commands.Add(new Command(Command.Type.NormalStartup));
-			}
+
 
 			RunCommands(commands);
 		}
@@ -216,12 +238,12 @@ namespace MoveToDesktop
 			mainWindow.Closed += (sender, args) =>
 			{
 				notifyIcon.Visible = false;
-				Application.Current.Shutdown();
+				Current.Shutdown();
 			};
 
 
 
-			notifyIcon = new System.Windows.Forms.NotifyIcon();
+			notifyIcon = new NotifyIcon();
 			notifyIcon.Icon = MoveToDesktop.Properties.Resources.icon;
 			notifyIcon.Text = "MoveToDesktop is running";
 			notifyIcon.Click += (sender, args) =>
@@ -252,10 +274,10 @@ namespace MoveToDesktop
 					case Command.Type.GetApiHelper:
 						Int64 hwnd;
 						if (command.Argument == null)
-							Console.WriteLine(RunHelper.GetApiHelper());
+							Console.Write(RunHelper.GetApiHelper());
 						else if (Int64.TryParse(command.Argument, out hwnd))
-							Console.WriteLine(RunHelper.GetApiHelper(hwnd));
-						Application.Current.Shutdown();
+							Console.Write(RunHelper.GetApiHelper(hwnd));
+						Current.Shutdown();
 						return;
 
 					case Command.Type.NormalStartup:

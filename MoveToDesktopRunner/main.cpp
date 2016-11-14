@@ -319,29 +319,49 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 
 			else if (!_wcsicmp(szArglist[1], L"/help") || !_wcsicmp(szArglist[1], L"/?") || !_wcsicmp(szArglist[1], L"--help"))
 			{
-				printf("Help goes here\n");
+				printf("MoveToDesktop\n");
+				printf("Desktop Functions\n");
+				printf("    --create-desktop                     Create a new desktop\n");
+				printf("    --desktop-count                      Return the current desktop count\n");
+				printf("    --desktop-index                      Return the current desktop index\n");
+				printf("    --switch-desktop <INDEX>             Switch the desktop to the index\n");
+				printf("    --remove-desktop <INDEX> <FALLBACK>  Remove the desktop at INDEX, and switch to FALLBACK if it is the current desktop\n");
+				printf("    --remove-empty-desktops              Remove all desktops that are empty\n");
+				printf("\n");
+				printf("Window Functions\n");
+				printf("    --move-to-new-desktop <HWND>         Create a new desktop and move the window with the HWND to the desktop\n");
+				printf("    --move-to-left-desktop <HWND>        Move the window with the HWND to the left desktop\n");
+				printf("    --move-to-right-desktop <HWND>       Move the window with the HWND to the right desktop\n");
+				printf("    --move-to-desktop <HWND> <INDEX>     Move the window with the HWND to the desktop at INDEX\n");
+				printf("\n");
+				printf("General Functions\n");
+				printf("    --is-running              Return 0 if this runner is running\n");
+				printf("    --exit                    Exit the runner\n");
+				printf("    --help                    Show the help\n");
+				printf("\n");
+				printf("Notice that all return values are exit codes!\n");
 				return 1;
 			}
 
 		}
 		if (nArgs > 2)
 		{
-			if (!_wcsicmp(szArglist[1], L"/switch-desktop"))
+			if (!_wcsicmp(szArglist[1], L"--switch-desktop"))
 			{
 				UINT index = _wtoi(szArglist[2]);
 				return !SwitchDesktop(index);
 			}
-			else if (!_wcsicmp(szArglist[1], L"/move-to-new-desktop"))
+			else if (!_wcsicmp(szArglist[1], L"--move-to-new-desktop"))
 			{
 				HWND hwnd = (HWND)wcstoll(szArglist[2], NULL, 10);
 				return (int)PostMessage(hwnd, WM_SYSCOMMAND, MOVETOMENU_NEW, 1);
 			}
-			else if (!_wcsicmp(szArglist[1], L"/move-to-left-desktop"))
+			else if (!_wcsicmp(szArglist[1], L"--move-to-left-desktop"))
 			{
 				HWND hwnd = (HWND)wcstoll(szArglist[2], NULL, 10);
 				return (int)PostMessage(hwnd, WM_SYSCOMMAND, MOVETOMENU_LEFT, 1);
 			}
-			else if (!_wcsicmp(szArglist[1], L"/move-to-right-desktop"))
+			else if (!_wcsicmp(szArglist[1], L"--move-to-right-desktop"))
 			{
 				HWND hwnd = (HWND)wcstoll(szArglist[2], NULL, 10);
 				return (int)PostMessage(hwnd, WM_SYSCOMMAND, MOVETOMENU_RIGHT, 1);
@@ -349,13 +369,13 @@ INT WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPSTR cmdLine, IN
 		}
 		if (nArgs > 3)
 		{
-			if (!_wcsicmp(szArglist[1], L"/remove-desktop"))
+			if (!_wcsicmp(szArglist[1], L"--remove-desktop"))
 			{
 				UINT index = _wtoi(szArglist[2]);
 				UINT fallback = _wtoi(szArglist[3]);
 				return !RemoveDesktop(index, fallback);
 			}
-			else if (!_wcsicmp(szArglist[1], L"/move-to-desktop"))
+			else if (!_wcsicmp(szArglist[1], L"--move-to-desktop"))
 			{
 				HWND hwnd = (HWND)wcstoll(szArglist[2], NULL, 10);
 				UINT index = _wtoi(szArglist[3]);

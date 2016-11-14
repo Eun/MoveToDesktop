@@ -168,7 +168,8 @@
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(SolutionDir)MoveToDesktopRunner\$(TargetFileName)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -195,7 +196,8 @@
       </IgnoreAllDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetDir)$(TargetFileName)" "$(SolutionDir)MoveToDesktopRunner\$(TargetFileName)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
