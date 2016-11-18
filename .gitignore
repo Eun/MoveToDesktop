@@ -2,7 +2,7 @@
 /Debug/
 /packages/
 /ipch/
-
+/.vs/
 *.opensdf
 *.sdf
 *.suo

@@ -137,11 +137,16 @@
     <PreBuildEvent>
     </PreBuildEvent>
   </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
+  <Target Name="AfterBuild" Condition="'$(Configuration)'=='Release'">
+    <CreateItem Include="$(SolutionDir)\packages\ILMerge.*\tools\ILMerge.exe">
+      <Output TaskParameter="Include" ItemName="ILMergeExe" />
+    </CreateItem>
+    <Error Text="@(ILMergeExe) does not exists" Condition="!Exists('@(ILMergeExe)')" />
+    <CreateItem Include="@(ReferencePath)" Condition="'%(CopyLocal)'=='true'">
+      <Output TaskParameter="Include" ItemName="ILMergeAssemblies" />
+    </CreateItem>
+    <Delete Files="$(OutputPath)\ILMerge.log" Condition="Exists('$(OutputPath)\ILMerge.log')" />
+    <Exec Command="&quot;@(ILMergeExe)&quot; /ndebug /log:$(OutputPath)\ILMerge.log /out:@(MainAssembly) &quot;@(IntermediateAssembly)&quot; @(ILMergeAssemblies-&gt;'&quot;%(FullPath)&quot;', ' ')" />
   </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>
