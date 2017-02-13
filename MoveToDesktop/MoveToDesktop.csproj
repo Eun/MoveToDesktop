@@ -72,6 +72,31 @@
     <Compile Include="RunHelper.cs" />
     <Compile Include="Runner.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="VirtualDesktop\ApplicationHelper.cs" />
+    <Compile Include="VirtualDesktop\Internal\Disposable.cs" />
+    <Compile Include="VirtualDesktop\Internal\RawWindow.cs" />
+    <Compile Include="VirtualDesktop\Internal\TransparentWindow.cs" />
+    <Compile Include="VirtualDesktop\Interop\CLSID.cs" />
+    <Compile Include="VirtualDesktop\Interop\ComObjects.cs" />
+    <Compile Include="VirtualDesktop\Interop\IApplicationView.cs" />
+    <Compile Include="VirtualDesktop\Interop\IApplicationViewCollection.cs" />
+    <Compile Include="VirtualDesktop\Interop\IObjectArray.cs" />
+    <Compile Include="VirtualDesktop\Interop\IServiceProvider.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktop.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktopManager.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktopManagerInternal.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktopNotification.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktopNotificationService.cs" />
+    <Compile Include="VirtualDesktop\Interop\IVirtualDesktopPinnedApps.cs" />
+    <Compile Include="VirtualDesktop\Interop\NativeMethods.cs" />
+    <Compile Include="VirtualDesktop\Interop\VirtualDesktopManagerInternal.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktop.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktop.static.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktop.static.notification.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktop.static.pin.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktopChangedEventArgs.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktopDestroyEventArgs.cs" />
+    <Compile Include="VirtualDesktop\VirtualDesktopHelper.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -111,6 +136,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
+    <None Include="VirtualDesktop\VirtualDesktop.nuspec" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\icon.ico" />
@@ -118,7 +144,18 @@
   <ItemGroup>
     <Resource Include="Resources\shield.ico" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Resources\1.ico" />
+    <None Include="Resources\2.ico" />
+    <None Include="Resources\3.ico" />
+    <None Include="Resources\4.ico" />
+    <None Include="Resources\5.ico" />
+    <None Include="Resources\6.ico" />
+    <None Include="Resources\7.ico" />
+    <None Include="Resources\8.ico" />
+    <None Include="Resources\9.ico" />
+    <None Include="Resources\9plus.ico" />
+  </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\MoveToDesktopRunner\MoveToDesktopRunner.x64.exe">
       <Link>Resources\MoveToDesktopRunner.x64.exe</Link>

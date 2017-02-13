@@ -39,7 +39,7 @@ enum EComStatus
 };
 
 int ComStatus = COMSTATUS_UNINITIALIZED;
-#define COMMAND_TIMEOUT 500 // Blocks Command below this timeout
+#define COMMAND_TIMEOUT 100 // Blocks Command below this timeout
 bool bAddedMenu = false;
 bool bReadIni = false;
 bool bSwitchDesktopAfterMove = false;
@@ -423,6 +423,58 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 	return TRUE;
 }
 
+void PressSwitchDesktopShortcut(WORD key) {
+	INPUT ip;
+	// Set up a generic keyboard event.
+	ip.type = INPUT_KEYBOARD;
+	ip.ki.wScan = 0; // hardware scan code for key
+	ip.ki.time = 0;
+	ip.ki.dwExtraInfo = 0;
+
+
+	ip.ki.dwFlags = 0; // 0 for key press
+
+					   // Press the "CTRL" key
+	ip.ki.wVk = VK_CONTROL; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+	// Press the "CTRL" key
+	ip.ki.wVk = VK_LWIN; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+	// Press the "CTRL" key
+	ip.ki.wVk = key; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+
+
+	// Release the "A" key
+	ip.ki.dwFlags = KEYEVENTF_KEYUP; // KEYEVENTF_KEYUP for key release
+
+									 // Press the "CTRL" key
+	ip.ki.wVk = VK_CONTROL; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+	// Press the "CTRL" key
+	ip.ki.wVk = VK_LWIN; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+	// Press the "CTRL" key
+	ip.ki.wVk = key; // virtual-key code for the "a" key
+	SendInput(1, &ip, sizeof(INPUT));
+}
+
+BOOL TrySwitchingDesktopTo(IObjectArray *pObjectArray, UINT index) 
+{
+	IVirtualDesktop *pAdjacentDesktop = nullptr;
+	if (SUCCEEDED(pObjectArray->GetAt(index, __uuidof(IVirtualDesktop), (void**)&pAdjacentDesktop)))
+	{
+		pDesktopManagerInternal->SwitchDesktop(pAdjacentDesktop);
+		pAdjacentDesktop->Release();
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+
 void HandleSysCommand(WPARAM wParam, HWND hwnd)
 {
 	if (wParam == MOVETOMENU_NEW)
@@ -466,7 +518,15 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 			{
 				if (bSwitchDesktopAfterMove)
 				{
-					pDesktopManagerInternal->SwitchDesktop(pNewDesktop);
+					IObjectArray *pObjectArray = nullptr;
+					UINT count;
+					if (FAILED(pDesktopManagerInternal->GetDesktops(&pObjectArray)) || FAILED(pObjectArray->GetCount(&count)) || TrySwitchingDesktopTo(pObjectArray, count - 1))
+						pDesktopManagerInternal->SwitchDesktop(pNewDesktop);
+					else
+						PressSwitchDesktopShortcut(VK_RIGHT);
+
+					if (pObjectArray != nullptr)
+						pObjectArray->Release();
 				}
 				else if (focusHwnd)
 				{
@@ -504,11 +564,12 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 			return;
 		}
 
-		IVirtualDesktop *pDesktop = nullptr;
-		if (SUCCEEDED(pObjectArray->GetAt((UINT)wParam - MOVETOMENU_START, __uuidof(IVirtualDesktop), (void**)&pDesktop)))
+		IVirtualDesktop *pDestDesktop = nullptr;
+		UINT index = (UINT)wParam - MOVETOMENU_START;
+		if (SUCCEEDED(pObjectArray->GetAt(index, __uuidof(IVirtualDesktop), (void**)&pDestDesktop)))
 		{
 			GUID id;
-			hr = pDesktop->GetID(&id);
+			hr = pDestDesktop->GetID(&id);
 
 			if (SUCCEEDED(hr))
 			{
@@ -526,32 +587,59 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 				hr = pDesktopManager->MoveWindowToDesktop(hwnd, id);
 				if (SUCCEEDED(hr))
 				{
-					// If there are no windows delete the desktop
-					if (bDeleteEmptyDesktops)
-					{
-						IVirtualDesktop *pCurrentDesktop = nullptr;
-						hr = pDesktopManagerInternal->GetCurrentDesktop(&pCurrentDesktop);
-						if (SUCCEEDED(hr))
-						{
-							if (pCurrentDesktop != pDesktop)
-							{
-								if (EnumWindows((WNDENUMPROC)EnumWindowsProc, NULL) != FALSE)
-								{
-									Log("Removing Desktop");
-									pDesktopManagerInternal->RemoveDesktop(pCurrentDesktop, pDesktop);
-								}
-							}
-							pCurrentDesktop->Release();
-						}
-					}
+					UINT count;
+					int currentIndex = GetCurrentDesktopIndex(&count) - MOVETOMENU_START;
 
 					if (bSwitchDesktopAfterMove)
 					{
-						pDesktopManagerInternal->SwitchDesktop(pDesktop);
+						if (currentIndex < index)
+						{
+							if (currentIndex == index - 1U || TrySwitchingDesktopTo(pObjectArray, index - 1U))
+							{
+								PressSwitchDesktopShortcut(VK_RIGHT);
+							}
+							else
+							{
+								pDesktopManagerInternal->SwitchDesktop(pDestDesktop);
+								Log("Directly Switch, Current: %i, Dest: %i", currentIndex, index);
+							}
+						}
+						else if(index < currentIndex) 
+						{
+							if (currentIndex == index + 1U || TrySwitchingDesktopTo(pObjectArray, index + 1U))
+							{
+								PressSwitchDesktopShortcut(VK_LEFT);
+							}
+							else
+							{
+								pDesktopManagerInternal->SwitchDesktop(pDestDesktop);
+								Log("Directly Switch, Current: %i, Dest: %i",currentIndex,index);
+							}
+						}
+
 					}
 					else if (focusHwnd != NULL)
 					{
 						SetForegroundWindow(focusHwnd);
+					}
+
+
+					// If there are no windows delete the desktop
+					if (bDeleteEmptyDesktops)
+					{
+						IVirtualDesktop *pCurrentDesktop = nullptr;
+						if (SUCCEEDED(pObjectArray->GetAt(currentIndex, __uuidof(IVirtualDesktop), (void**)&pCurrentDesktop)))
+						{
+							if (pCurrentDesktop != pDestDesktop)
+							{
+								if (EnumWindows((WNDENUMPROC)EnumWindowsProc, NULL) != FALSE)
+								{
+									Log("Removing Desktop");
+									pDesktopManagerInternal->RemoveDesktop(pCurrentDesktop, pDestDesktop);
+								}
+							}
+							pCurrentDesktop->Release();
+						}
 					}
 				}
 				else
@@ -559,7 +647,7 @@ void HandleSysCommand(WPARAM wParam, HWND hwnd)
 					Log("Error %X on moving %X to %X", hr, hwnd, id);
 				}
 			}
-			pDesktop->Release();
+			pDestDesktop->Release();
 		}
 		pObjectArray->Release();
 		nLastCommand = GetTickCount64() + COMMAND_TIMEOUT;

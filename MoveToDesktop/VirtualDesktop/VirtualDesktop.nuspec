@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>$id$</id>
+    <title>$title$</title>
+    <version>$version$</version>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <licenseUrl>https://github.com/Grabacr07/VirtualDesktop/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/Grabacr07/VirtualDesktop</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$ You need to include the app manifest in your project so as to target Windows 10.</description>
+    <language>en-US</language>
+    <tags>Windows Windows10 Desktop VirtualDesktop</tags>
+  </metadata>
+</package>
