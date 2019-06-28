@@ -14,7 +14,7 @@ You can also move windows by using <kbd>WIN</kbd>+<kbd>ALT</kbd>+<kbd>Left/Right
 
 
 > **Hint**  
-> It is usefull to start MoveToDesktop as Administrator.  
+> It is useful to start MoveToDesktop as Administrator.  
 > If you do so, MoveToDesktop is also enabled for privileged tasks.  
 > For starting MoveToDesktop on logon the prefered way is to create a scheduled task. [See how](help/scheduled-tasks.md). 
 
@@ -30,7 +30,7 @@ Changelog
 
 1.3:
 * Delete empty desktops
-* Bufix Issue #8
+* Bugfix Issue #8
 * No Redistributable needed anymore #12
 * Setting for new Desktops #10
 
@@ -40,7 +40,7 @@ Changelog
 
 1.1:
 * Hotkey
-* Keyboard accelators
+* Keyboard accelerators
 * Switch desktop after move
 * Settings Ini File
 
